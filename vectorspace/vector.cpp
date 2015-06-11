@@ -1,9 +1,9 @@
 
-#include <vector.h>
+#include "vector.h"
 
 Vector::Vector(int dim)
 {
-  _vector = new vect;
+  _vector* = new vect;
   _vector.dimension = dim;
   _vector.arrow = new double[dim];
 
@@ -16,6 +16,7 @@ Vector::Vector(int dim)
   }
 }
 
+// For now I'll just deal with real numbers and come back later to update for general fields
 Vector::Vector(int dim, const double* elem)
 {
   _vector = new vect;
@@ -132,5 +133,12 @@ bool Vector::equals(Vector v2)
 
 void Vector::print()
 {
-  
+  cout << "[";
+
+  for (int i = 0; i < this._vector.dim; i++)
+  {
+    cout << this._vector.arrow[i] << ", ";
+  }
+
+  cout << "]";
 }
