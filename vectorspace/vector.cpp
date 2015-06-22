@@ -54,12 +54,12 @@ double Vector::dot(Vector* v2)
   return dot;
 }
 
-Vector* Vector::cross(Vector* v2)
+Vector Vector::cross(Vector* v2)
 {
   if (this->_vector->dimension != v2->_vector->dimension || this->_vector->dimension != 3)
   {
     std::cout << "Undefined.\n";
-    return NULL;
+    return 0;
   }
  
   int dim = this->_vector->dimension;
@@ -68,19 +68,28 @@ Vector* Vector::cross(Vector* v2)
   elem[1] = -(this->_vector->arrow[0] * v2->_vector->arrow[2] - this->_vector->arrow[2] * v2->_vector->arrow[0]);
   elem[2] = this->_vector->arrow[0] * v2->_vector->arrow[1] - this->_vector->arrow[1] * v2->_vector->arrow[0];
   
-  Vector* n = new Vector(dim, elem);
+  Vector n = Vector(dim, elem);
   
   return n;
 }
 
-Vector* Vector::add(Vector* v2)
+Vector Vector::add(Vector* v2)
 {
   if (this->_vector->dimension != v2->_vector->dimension)
   {
     std::cout << "Undefined.\n";
+    return 0; 
   }
 
-  return v2;
+  int dim = this->_vector->dimension;
+  double* elem = new double[this->_vector->dimension];
+  elem[0] = this->_vector->arrow[0] + v2->_vector->arrow[0];
+  elem[1] = this->_vector->arrow[1] + v2->_vector->arrow[1];
+  elem[2] = this->_vector->arrow[2] + v2->_vector->arrow[2];
+
+  Vector v1v2 = Vector(dim, elem);
+
+  return v1v2;
 }
 
 Vector* Vector::subtract(Vector* v2)
@@ -139,7 +148,10 @@ void Vector::print()
 
   for (int i = 0; i < this->_vector->dimension; i++)
   {
-    std::cout << this->_vector->arrow[i] << ", ";
+    if (i == this->_vector->dimension - 1)
+      std::cout << this->_vector->arrow[i];
+    else
+      std::cout << this->_vector->arrow[i] << ", ";
   }
 
   std::cout << "]\n";
