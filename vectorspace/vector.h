@@ -47,5 +47,5 @@ class Vector {
 
     void print();                         // print vector contents (x1, x2, ..., xn, ...)
 
-    ~Vector();
+    //~Vector();
 };

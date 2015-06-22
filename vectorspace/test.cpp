@@ -18,5 +18,5 @@ int main()
 
   v1.print();
 
-  std::cout << "Hope it worked :-)";
+  std::cout << "Hope it worked :-)\n";
 }

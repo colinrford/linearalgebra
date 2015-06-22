@@ -142,10 +142,6 @@ void Vector::print()
     std::cout << this->_vector->arrow[i] << ", ";
   }
 
-  std::cout << "]";
+  std::cout << "]\n";
 }
 
-Vector::~Vector()
-{
-  delete this; 
-}
