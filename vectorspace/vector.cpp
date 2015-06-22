@@ -39,7 +39,7 @@ double Vector::dot(Vector* v2)
 {
   if (this->_vector->dimension != v2->_vector->dimension)
   {
-    printf("Undefined.\n");
+    std::cout << "Undefined.\n";
     return 0;
   }
 
@@ -58,7 +58,7 @@ Vector* Vector::cross(Vector* v2)
 {
   if (this->_vector->dimension != v2->_vector->dimension || this->_vector->dimension != 3)
   {
-    printf("Undefined.\n");
+    std::cout << "Undefined.\n";
     return NULL;
   }
  
@@ -77,7 +77,7 @@ Vector* Vector::add(Vector* v2)
 {
   if (this->_vector->dimension != v2->_vector->dimension)
   {
-    printf("Undefined.\n");
+    std::cout << "Undefined.\n";
   }
 
   return v2;
@@ -87,7 +87,7 @@ Vector* Vector::subtract(Vector* v2)
 {
   if (this->_vector->dimension != v2->_vector->dimension)
   {
-    printf("Undefined.\n");
+    std::cout << "Undefined.\n";
   } 
 
   return v2;
