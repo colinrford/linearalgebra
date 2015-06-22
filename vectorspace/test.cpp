@@ -1,24 +1,22 @@
 
-
 #include "vector.cpp"
-using namespace std;
 
 int main()
 {
   int dim;
-  cout << "Enter integer for dimension";
-  cin >> dim;
+  std::cout << "Enter integer for dimension";
+  std::cin >> dim;
 
   double elem[dim];
   for (int i = 0; i < dim; i++)
   {
-    cout << "Enter double value for vector element " << i;
-    cin >> elem[i];
+    std::cout << "Enter double value for vector element " << i;
+    std::cin >> elem[i];
   }
   
   Vector v1 = Vector(dim, elem);
 
   v1.print();
 
-  cout << "Hope it worked :-)";
+  std::cout << "Hope it worked :-)";
 }
