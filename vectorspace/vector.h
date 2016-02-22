@@ -11,7 +11,9 @@ struct vect {
 
 class Vector {
 
-  vect* _vector;
+  private: 
+
+    vect* _vector;
 
   public:
 
