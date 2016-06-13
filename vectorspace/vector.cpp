@@ -54,7 +54,7 @@ double Vector::dot(Vector* v2)
   return dot;
 }
 
-Vector Vector::cross(Vector* v2)
+Vector* Vector::cross(Vector* v2)
 {
   if (this->_vector->dimension != v2->_vector->dimension || this->_vector->dimension != 3)
   {
@@ -68,12 +68,12 @@ Vector Vector::cross(Vector* v2)
   elem[1] = -(this->_vector->arrow[0] * v2->_vector->arrow[2] - this->_vector->arrow[2] * v2->_vector->arrow[0]);
   elem[2] = this->_vector->arrow[0] * v2->_vector->arrow[1] - this->_vector->arrow[1] * v2->_vector->arrow[0];
   
-  Vector n = Vector(dim, elem);
+  Vector* n = new Vector(dim, elem);
   
   return n;
 }
 
-Vector Vector::add(Vector* v2)
+Vector* Vector::add(Vector* v2)
 {
   if (this->_vector->dimension != v2->_vector->dimension)
   {
@@ -87,7 +87,7 @@ Vector Vector::add(Vector* v2)
   elem[1] = this->_vector->arrow[1] + v2->_vector->arrow[1];
   elem[2] = this->_vector->arrow[2] + v2->_vector->arrow[2];
 
-  Vector v1v2 = Vector(dim, elem);
+  Vector* v1v2 = new Vector(dim, elem);
 
   return v1v2;
 }
