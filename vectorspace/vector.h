@@ -7,6 +7,12 @@
 struct vect {
   double* arrow;
   int dimension;                          // dimension of vector; number of elements
+
+  vect() : arrow(nullptr) {}
+  ~vect() 
+  {
+    delete[] arrow;
+  }
 };
 
 class Vector {
@@ -49,5 +55,5 @@ class Vector {
 
     void print();                         // print vector contents (x1, x2, ..., xn, ...)
 
-    //~Vector();
+    ~Vector();
 };

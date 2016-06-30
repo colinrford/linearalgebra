@@ -69,7 +69,8 @@ Vector* Vector::cross(Vector* v2)
   elem[2] = this->_vector->arrow[0] * v2->_vector->arrow[1] - this->_vector->arrow[1] * v2->_vector->arrow[0];
   
   Vector* n = new Vector(dim, elem);
-  
+  delete[] elem;
+
   return n;
 }
 
@@ -88,6 +89,7 @@ Vector* Vector::add(Vector* v2)
   elem[2] = this->_vector->arrow[2] + v2->_vector->arrow[2];
 
   Vector* v1v2 = new Vector(dim, elem);
+  delete[] elem;
 
   return v1v2;
 }
@@ -157,3 +159,7 @@ void Vector::print()
   std::cout << "]\n";
 }
 
+Vector::~Vector()
+{
+  delete _vector;
+}
