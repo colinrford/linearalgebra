@@ -5,6 +5,14 @@ using std::cout;
 Vector::Vector(int dim)
 {
   _vector = new vect;
+  try 
+  {
+    if (dim <= 0)
+      throw VectorException();
+  } catch (VectorException& e) 
+  {
+      std::cout << "Error! :0( " << e.nonPos() << std::endl;
+  }
   _vector->dimension = dim;
   _vector->arrow = new double[dim];
 
@@ -30,79 +38,113 @@ Vector::Vector(int dim, const double* elem)
   }
 }
 
-double Vector::norm()
+double Vector::norm(Vector* v)
 {
-  return sqrt(this->dot(this));
+  return sqrt(dot(v, v));
 }
 
-double Vector::dot(Vector* v2)
+double Vector::dot(Vector* v1, Vector* v2)
 {
-  if (this->_vector->dimension != v2->_vector->dimension)
+  if (v1->_vector->dimension != v2->_vector->dimension)
   {
     std::cout << "Undefined.\n";
-    return 0;
+    return NAN;
   }
 
   double dot;
-  int dim = this->_vector->dimension;
+  int dim = v1->_vector->dimension;
 
   for (int i = 0; i < dim; i++)
   {
-    dot += this->_vector->arrow[i] * v2->_vector->arrow[i];
+    dot += v1->_vector->arrow[i] * v2->_vector->arrow[i];
   }
+  
+  bool boo = compare(dot, 0);
+  if (boo)
+    dot = 0;
 
   return dot;
 }
 
-Vector Vector::cross(Vector* v2)
+double dot(Vector* v1, Vector* v2)
 {
-  if (this->_vector->dimension != v2->_vector->dimension || this->_vector->dimension != 3)
+  return v1->dot(v1, v2);
+}
+
+Vector Vector::cross(Vector* v1, Vector* v2)
+{
+  if ((v1->_vector->dimension != v2->_vector->dimension) || (v1->_vector->dimension != 3))
   {
     std::cout << "Undefined.\n";
-    return 0;
+    return NULL;
   }
  
-  int dim = this->_vector->dimension;
-  double* elem = new double[this->_vector->dimension];
-  elem[0] = this->_vector->arrow[1] * v2->_vector->arrow[2] - this->_vector->arrow[2] * v2->_vector->arrow[1];
-  elem[1] = -(this->_vector->arrow[0] * v2->_vector->arrow[2] - this->_vector->arrow[2] * v2->_vector->arrow[0]);
-  elem[2] = this->_vector->arrow[0] * v2->_vector->arrow[1] - this->_vector->arrow[1] * v2->_vector->arrow[0];
+  int dim = v1->_vector->dimension;
+  double* elem = new double[v1->_vector->dimension];
+  elem[0] = v1->_vector->arrow[1] * v2->_vector->arrow[2] - v1->_vector->arrow[2] * v2->_vector->arrow[1];
+  elem[1] = -(v1->_vector->arrow[0] * v2->_vector->arrow[2] - v1->_vector->arrow[2] * v2->_vector->arrow[0]);
+  elem[2] = v1->_vector->arrow[0] * v2->_vector->arrow[1] - v1->_vector->arrow[1] * v2->_vector->arrow[0];
   
+  for (int i = 0; i < dim; i++)
+    if (compare(elem[i], 0))
+      elem[i] = 0;
+
   Vector n = Vector(dim, elem);
   
   return n;
 }
 
-Vector Vector::add(Vector* v2)
+Vector cross(Vector* v1, Vector* v2)
 {
-  if (this->_vector->dimension != v2->_vector->dimension)
+  return v1->cross(v1, v2);
+}
+
+Vector Vector::add(Vector* v1, Vector* v2)
+{
+  if (v1->_vector->dimension != v2->_vector->dimension)
   {
     std::cout << "Undefined.\n";
-    return 0; 
+    return NAN; 
   }
 
-  int dim = this->_vector->dimension;
-  double* elem = new double[this->_vector->dimension];
-  elem[0] = this->_vector->arrow[0] + v2->_vector->arrow[0];
-  elem[1] = this->_vector->arrow[1] + v2->_vector->arrow[1];
-  elem[2] = this->_vector->arrow[2] + v2->_vector->arrow[2];
+  int dim = v1->_vector->dimension;
+  double* elem = new double[v1->_vector->dimension];
+  for (int i = 0; i < dim; i++)
+    elem[i] = v1->_vector->arrow[i] + v2->_vector->arrow[i];
 
   Vector v1v2 = Vector(dim, elem);
 
   return v1v2;
 }
 
-Vector* Vector::subtract(Vector* v2)
+Vector add(Vector* v1, Vector* v2)
 {
-  if (this->_vector->dimension != v2->_vector->dimension)
-  {
-    std::cout << "Undefined.\n";
-  } 
-
-  return v2;
+  return v1->add(v1, v2);
 }
 
-Vector* Vector::scalar(int s)
+Vector Vector::subtract(Vector* v1, Vector* v2)
+{
+  if (v1->_vector->dimension != v2->_vector->dimension)
+  {
+    std::cout << "Undefined.\n";
+    return NAN;
+  }
+
+  double* elem = new double[v1->_vector->dimension];
+  for (int i = 0; i < v1->_vector->dimension; i++)
+    elem[i] = v1->_vector->arrow[i] - v2->_vector->arrow[i];
+
+  Vector v1mv2 = Vector(v1->_vector->dimension, elem);
+
+  return v1mv2;
+}
+
+Vector subtract(Vector* v1, Vector* v2)
+{
+  return v1->subtract(v1, v2);
+}
+
+Vector* Vector::scalar(double s)
 {
   for (int i = 0; i < this->_vector->dimension; i++)
   {
@@ -114,7 +156,7 @@ Vector* Vector::scalar(int s)
 
 Vector* Vector::unit()
 {
-  double norm = this->norm();
+  double norm = this->norm(this);
 
   for (int i = 0; i < this->_vector->dimension; i++)
   {
@@ -124,16 +166,16 @@ Vector* Vector::unit()
   return this;
 }
 
-bool Vector::equals(Vector* v2)
+bool Vector::equals(Vector* v1, Vector* v2)
 {
-  if (this->_vector->dimension != v2->_vector->dimension)
+  if (v1->_vector->dimension != v2->_vector->dimension)
   {
     return false; 
   } 
 
-  for (int i = 0; i < this->_vector->dimension; i++)
+  for (int i = 0; i < v1->_vector->dimension; i++)
   {
-    if (this->_vector->arrow[i] != v2->_vector->arrow[i])
+    if (v1->_vector->arrow[i] != v2->_vector->arrow[i])
     {
       return false;
     }
@@ -142,9 +184,58 @@ bool Vector::equals(Vector* v2)
   return true;
 }
 
+Vector operator+(Vector v1, Vector v2)
+{
+  Vector v3 = add(&v1, &v2);
+  return v3;
+}
+
+Vector operator-(Vector v1, Vector v2)
+{
+  Vector v3 = subtract(&v1, &v2);
+  return v3;
+}
+
+Vector operator*(double d, Vector v)
+{
+  Vector v3 = *v.scalar(d);
+  return v3;
+}
+
+Vector operator*(Vector v, double d)
+{
+  Vector u = *v.scalar(d);
+  return u;
+}
+
+Vector operator/(double d, Vector v)
+{
+  double d_inv = 1 / d;
+  
+  std::cout << "ABBE ABBE ABBE before ";
+
+  Vector u = *v.scalar(d_inv);
+  return u;
+}
+
+Vector operator/(Vector v, double d)
+{
+  double d_inv = 1 / d;
+
+  std::cout << "ABBE ABBE ABBE after ";
+  
+  Vector u = *v.scalar(d_inv);
+  return u;
+}
+
+bool operator==(Vector v1, Vector v2)
+{
+  return v1.equals(&v1, &v2);
+}
+
 void Vector::print()
 {
-  std::cout << "[";
+  std::cout << "(";
 
   for (int i = 0; i < this->_vector->dimension; i++)
   {
@@ -154,6 +245,15 @@ void Vector::print()
       std::cout << this->_vector->arrow[i] << ", ";
   }
 
-  std::cout << "]\n";
+  std::cout << ")\n";
 }
 
+bool compare(double a, double b)
+{
+  double epsilon = 1E-40;
+
+  if (abs(b - a) < epsilon)
+    return true;
+  else
+    return false;
+}
