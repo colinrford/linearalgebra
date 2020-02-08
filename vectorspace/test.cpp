@@ -16,7 +16,7 @@ int main()
       return 0;
   }
 
-  double elem[dim];
+  unique_ptr<double[]> elem(double[dim]);
   for (int i = 0; i < dim; i++)
   {
     std::cout << "Enter value for v_1 component " << i << ": ";

@@ -4,59 +4,60 @@ using std::cout;
 
 Vector::Vector(int dim)
 {
-  _vector = new vect;
   try 
   {
     if (dim <= 0)
       throw VectorException();
   } catch (VectorException& e) 
   {
-      std::cout << "Error! :0( " << e.nonPos() << std::endl;
+      cout << "Error! :0( " << e.nonPos() << std::endl;
   }
-  _vector->dimension = dim;
-  _vector->arrow = new double[dim];
+  dimension = dim;
+  arrow.reset(new double[dim]);
 
   for (int i = 0; i < dim; i++)
   {
     if (i == 0)
-      _vector->arrow[i] = 1;
+      arrow[i] = 1;
     else
-      _vector->arrow[i] = 0;
+      arrow[i] = 0;
   }
 }
 
 // For now I'll just deal with real numbers and come back later to update for general fields
-Vector::Vector(int dim, const double* elem)
+Vector::Vector(int dim, unique_ptr<double[]> elem)
 {
-  _vector = new vect;
-  _vector->dimension = dim;
-  _vector->arrow = new double[dim];
-  
-  for (int i = 0; i < dim; i++)
+  try
   {
-    _vector->arrow[i] = elem[i];
+    if (dim <= 0)
+      throw VectorException();
+  } catch (VectorException& e)
+  {
+    cout << "Error! :0( " << e.nonPos() << std::endl;
   }
+
+  arrow = std::move(elem);
 }
 
-double Vector::norm(Vector* v)
+double Vector::norm(Vector& v)
 {
   return sqrt(dot(v, v));
 }
 
-double Vector::dot(Vector* v1, Vector* v2)
+double Vector::dot(Vector& v1, Vector& v2)
 {
-  if (v1->_vector->dimension != v2->_vector->dimension)
+  if (v1.dimension != v2.dimension)
   {
     std::cout << "Undefined.\n";
     return NAN;
   }
 
   double dot;
-  int dim = v1->_vector->dimension;
+  int dim = v1.dimension;
 
   for (int i = 0; i < dim; i++)
   {
-    dot += v1->_vector->arrow[i] * v2->_vector->arrow[i];
+    dot += v1.arrow[i] * v2.arrow[i];
   }
   
   bool boo = compare(dot, 0);
@@ -66,24 +67,24 @@ double Vector::dot(Vector* v1, Vector* v2)
   return dot;
 }
 
-double dot(Vector* v1, Vector* v2)
+double dot(Vector& v1, Vector& v2)
 {
-  return v1->dot(v1, v2);
+  return v1.dot(v1, v2);
 }
 
-Vector Vector::cross(Vector* v1, Vector* v2)
+Vector Vector::cross(Vector& v1, Vector& v2)
 {
-  if ((v1->_vector->dimension != v2->_vector->dimension) || (v1->_vector->dimension != 3))
+  if ((v1.dimension != v2.dimension) || (v1.dimension != 3))
   {
     std::cout << "Undefined.\n";
-    return NULL;
+    //return NULL;
   }
  
-  int dim = v1->_vector->dimension;
-  double* elem = new double[v1->_vector->dimension];
-  elem[0] = v1->_vector->arrow[1] * v2->_vector->arrow[2] - v1->_vector->arrow[2] * v2->_vector->arrow[1];
-  elem[1] = -(v1->_vector->arrow[0] * v2->_vector->arrow[2] - v1->_vector->arrow[2] * v2->_vector->arrow[0]);
-  elem[2] = v1->_vector->arrow[0] * v2->_vector->arrow[1] - v1->_vector->arrow[1] * v2->_vector->arrow[0];
+  int dim = v1.dimension;
+  unique_ptr<double[]> elem(double[dim]);
+  elem[0] = v1.arrow[1] * v2.arrow[2] - v1.arrow[2] * v2.arrow[1];
+  elem[1] = -(v1.arrow[0] * v2.arrow[2] - v1.arrow[2] * v2.arrow[0]);
+  elem[2] = v1.arrow[0] * v2.arrow[1] - v1.arrow[1] * v2.arrow[0];
   
   for (int i = 0; i < dim; i++)
     if (compare(elem[i], 0))
@@ -94,88 +95,88 @@ Vector Vector::cross(Vector* v1, Vector* v2)
   return n;
 }
 
-Vector cross(Vector* v1, Vector* v2)
+Vector cross(Vector& v1, Vector& v2)
 {
-  return v1->cross(v1, v2);
+  return v1.cross(v1, v2);
 }
 
-Vector Vector::add(Vector* v1, Vector* v2)
+Vector Vector::add(Vector& v1, Vector& v2)
 {
-  if (v1->_vector->dimension != v2->_vector->dimension)
+  if (v1.dimension != v2.dimension)
   {
     std::cout << "Undefined.\n";
     return NAN; 
   }
 
-  int dim = v1->_vector->dimension;
-  double* elem = new double[v1->_vector->dimension];
+  int dim = v1.dimension;
+  unique_ptr<double[]> elem(double[dim]);
   for (int i = 0; i < dim; i++)
-    elem[i] = v1->_vector->arrow[i] + v2->_vector->arrow[i];
+    elem[i] = v1.arrow[i] + v2.arrow[i];
 
   Vector v1v2 = Vector(dim, elem);
 
   return v1v2;
 }
 
-Vector add(Vector* v1, Vector* v2)
+Vector add(Vector& v1, Vector& v2)
 {
-  return v1->add(v1, v2);
+  return v1.add(v1, v2);
 }
 
-Vector Vector::subtract(Vector* v1, Vector* v2)
+Vector Vector::subtract(Vector& v1, Vector& v2)
 {
-  if (v1->_vector->dimension != v2->_vector->dimension)
+  if (v1.dimension != v2.dimension)
   {
     std::cout << "Undefined.\n";
     return NAN;
   }
 
-  double* elem = new double[v1->_vector->dimension];
-  for (int i = 0; i < v1->_vector->dimension; i++)
-    elem[i] = v1->_vector->arrow[i] - v2->_vector->arrow[i];
+  unique_ptr<double[]> elem(double[v1.dimension]);
+  for (int i = 0; i < v1.dimension; i++)
+    elem[i] = v1.arrow[i] - v2.arrow[i];
 
-  Vector v1mv2 = Vector(v1->_vector->dimension, elem);
+  Vector v1mv2 = Vector(v1.dimension, elem);
 
   return v1mv2;
 }
 
-Vector subtract(Vector* v1, Vector* v2)
+Vector subtract(Vector& v1, Vector& v2)
 {
-  return v1->subtract(v1, v2);
+  return v1.subtract(v1, v2);
 }
 
-Vector* Vector::scalar(double s)
+Vector Vector::scalar(double s)
 {
-  for (int i = 0; i < this->_vector->dimension; i++)
+  for (int i = 0; i < this.dimension; i++)
   {
-    this->_vector->arrow[i] = s * this->_vector->arrow[i];
+    this.arrow[i] = s * this.arrow[i];
   }
   
   return this;
 }
 
-Vector* Vector::unit()
+Vector Vector::unit()
 {
-  double norm = this->norm(this);
+  double norm = this.norm(this);
 
-  for (int i = 0; i < this->_vector->dimension; i++)
+  for (int i = 0; i < this.dimension; i++)
   {
-    this->_vector->arrow[i] = this->_vector->arrow[i] / norm;
+    this.arrow[i] = this.arrow[i] / norm;
   }
   
   return this;
 }
 
-bool Vector::equals(Vector* v1, Vector* v2)
+bool Vector::equals(Vector& v1, Vector& v2)
 {
-  if (v1->_vector->dimension != v2->_vector->dimension)
+  if (v1.dimension != v2.dimension)
   {
     return false; 
   } 
 
-  for (int i = 0; i < v1->_vector->dimension; i++)
+  for (int i = 0; i < v1.dimension; i++)
   {
-    if (v1->_vector->arrow[i] != v2->_vector->arrow[i])
+    if (v1.arrow[i] != v2.arrow[i])
     {
       return false;
     }
@@ -228,21 +229,21 @@ Vector operator/(Vector v, double d)
   return u;
 }
 
-bool operator==(Vector v1, Vector v2)
+bool operator==(Vector& v1, Vector& v2)
 {
-  return v1.equals(&v1, &v2);
+  return v1.equals(v1, v2);
 }
 
 void Vector::print()
 {
   std::cout << "(";
 
-  for (int i = 0; i < this->_vector->dimension; i++)
+  for (int i = 0; i < this.dimension; i++)
   {
-    if (i == this->_vector->dimension - 1)
-      std::cout << this->_vector->arrow[i];
+    if (i == this.dimension - 1)
+      std::cout << this.arrow[i];
     else
-      std::cout << this->_vector->arrow[i] << ", ";
+      std::cout << this.arrow[i] << ", ";
   }
 
   std::cout << ")\n";
