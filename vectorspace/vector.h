@@ -37,26 +37,35 @@ class Vector {
     Vector(Vector&& v);
 
     Vector& operator=(Vector&& v);
+
+    auto operator[](int index) -> decltype(arrow[index]);
+
+    int getDimension();
+
+    int size();
+
+    int length();
     
-    unique_ptr<double[]>& getArrow();      // accessor for arrow
+    double* getArrow();       // accessor for arrow
+    // unique_ptr<double[]>& getArrow();      // accessor for arrow
 
     void setArrow(unique_ptr<double[]> elem);
 
     double norm(Vector& v);                        // norm of this = v; ||v||
 
-    double dot(Vector& v1, Vector& v2);                // this = v1 dot with v2; v1 * v2
+    double dot(Vector& v2);                // this = v1 dot with v2; v1 * v2
 
-    Vector cross(Vector& v1, Vector& v2);              // cross this = v1 and v2; v1 x v2
+    Vector cross(Vector& v2);              // cross this = v1 and v2; v1 x v2
 
-    Vector add(Vector& v1, Vector& v2);                // add this = v1 and v2; v1 + v2
+    Vector add(Vector& v2);                // add this = v1 and v2; v1 + v2
 
-    Vector subtract(Vector& v1, Vector& v2);           // subtract v2 from this = v1; v1 - v2
+    Vector subtract(Vector& v2);           // subtract v2 from this = v1; v1 - v2
 
     Vector scalar(double s);                 // multiply by scalar; s * this = v1
 
     Vector unit();                        // returns the unit vector of given vector this = v; v / ||v||
 
-    bool equals(Vector& v1, Vector& v2);               // determines whether two vectors are equal
+    bool equals(Vector& v2);               // determines whether two vectors are equal
 
     void print();                         // print vector contents (x1, x2, ..., xn, ...)
 

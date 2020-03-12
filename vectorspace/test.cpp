@@ -47,13 +47,11 @@ int main()
   Vector n(dim);
   try {
     n = cross(v1, v2);
+    std::cout << "v_1 cross v_2 = ";
+    n.print();
   } catch (VectorException& e) {
-    std::cout << "Error! :0( " << e.crossUndef() << std::endl;
-    return 0;
+    std::cout << e.crossUndef() << std::endl;
   }
-
-  std::cout << "v_1 cross v_2 = ";
-  n.print();
 
   Vector v3 = v1 + v2;
   std::cout << "v_1 + v_2 = ";
@@ -64,7 +62,7 @@ int main()
   v4.print();
 
   bool tf = v1 == v2;
-  std::cout << "does v_1 = v_2? ";
+  std::cout << "\ndoes v_1 = v_2? ";
   if (tf)
     std::cout << "yes\n";
   else
@@ -77,7 +75,14 @@ int main()
   std::cout << "v_1 / 2 = ";
   v1.print();
 
+  int d = v4.getDimension();
+  if (d <= 0)
+    return 0;
+  std::cout << "\nv4 belongs to R^" << d << std::endl;
+  std::cout << "\nTesting operator[].\nEntry d in v1 - v2, i.e., v4[d] = " << v4[d-1] << std::endl;
+
 
   std::cout << "Hope it worked :-)\nPress any key to end program.";
+  std::getchar();
   std::getchar();
 }

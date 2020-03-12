@@ -4,12 +4,10 @@ using std::cout;
 
 Vector::Vector(int dim)
 {
-  try 
-  {
+  try {
     if (dim <= 0)
       throw VectorException();
-  } catch (VectorException& e) 
-  {
+  } catch (VectorException& e) {
       cout << "Error! :0( " << e.nonPos() << std::endl;
   }
   dimension = dim;
@@ -27,56 +25,82 @@ Vector::Vector(int dim)
 // For now I'll just deal with real numbers and come back later to update for general fields
 Vector::Vector(int dim, unique_ptr<double[]> elem) : arrow(std::move(elem))
 {
-  try
-  {
+  try {
     if (dim <= 0)
       throw VectorException();
-  } catch (VectorException& e)
-  {
+  } catch (VectorException& e) {
     cout << "Error! :0( " << e.nonPos() << std::endl;
   }
   
   dimension = dim;
 }
 
-Vector::Vector(Vector&& v) : arrow{std::move(v.arrow)}, dimension{v.dimension} {
+Vector::Vector(Vector&& v) : arrow{std::move(v.arrow)}, dimension{v.dimension} 
+{
   v.dimension = 0;
 }
 
-Vector& Vector::operator=(Vector&& v) {
-     this->setArrow(std::move(v.getArrow()));
+Vector& Vector::operator=(Vector&& v) 
+{
+     this->setArrow(std::move(v.arrow));
+     this->dimension = v.dimension;
      return *this;
 }
 
-unique_ptr<double[]>& Vector::getArrow()
+// expected return type is the type of the elements (e.g. double)
+auto Vector::operator[](int index) -> decltype(arrow[index])
 {
-  return arrow;
+  if (index >= this->dimension)
+    throw VectorException();
+
+  return this->getArrow()[index];
+}
+
+int Vector::getDimension()
+{
+  return dimension;
+}
+
+int Vector::size()
+{
+  return dimension;
+}
+
+int Vector::length()
+{
+  return dimension;
+}
+
+// Raw pointers are okay if they are non-owning
+double* Vector::getArrow()
+{
+  return arrow.get();
 }
 
 void Vector::setArrow(unique_ptr<double[]> elem)
 {
-  arrow = std::move(elem);
+  arrow = elem;
 }
 
 double Vector::norm(Vector& v)
 {
-  return sqrt(dot(v, v));
+  return sqrt(v.dot(v));
 }
 
-double Vector::dot(Vector& v1, Vector& v2)
+double Vector::dot(Vector& v2)
 {
-  if (v1.dimension != v2.dimension)
+  int d = this->dimension;
+  if (d != v2.dimension)
   {
     std::cout << "Undefined.\n";
     //return NAN;
   }
 
   double dot;
-  int dim = v1.dimension;
 
-  for (int i = 0; i < dim; i++)
+  for (int i = 0; i < d; i++)
   {
-    dot += v1.arrow[i] * v2.arrow[i];
+    dot += this->arrow[i] * v2.arrow[i];
   }
   
   bool boo = compare(dot, 0);
@@ -88,93 +112,96 @@ double Vector::dot(Vector& v1, Vector& v2)
 
 double dot(Vector& v1, Vector& v2)
 {
-  return v1.dot(v1, v2);
+  return v1.dot(v2);
 }
 
-Vector Vector::cross(Vector& v1, Vector& v2)
+Vector Vector::cross(Vector& v2)
 {
-  if ((v1.dimension != v2.dimension) || (v1.dimension != 3))
+  int d = this->dimension;
+  if ((d!= v2.dimension) || (d != 3))
   {
     throw VectorException();
   }
- 
-  int dim = v1.dimension;
-  unique_ptr<double[]> elem(new double[dim]);
-  elem[0] = v1.arrow[1] * v2.arrow[2] - v1.arrow[2] * v2.arrow[1];
-  elem[1] = -(v1.arrow[0] * v2.arrow[2] - v1.arrow[2] * v2.arrow[0]);
-  elem[2] = v1.arrow[0] * v2.arrow[1] - v1.arrow[1] * v2.arrow[0];
+
+  unique_ptr<double[]> elem(new double[d]);
+  elem[0] = this->arrow[1] * v2.arrow[2] - this->arrow[2] * v2.arrow[1];
+  elem[1] = -(this->arrow[0] * v2.arrow[2] - this->arrow[2] * v2.arrow[0]);
+  elem[2] = this->arrow[0] * v2.arrow[1] - this->arrow[1] * v2.arrow[0];
   
-  for (int i = 0; i < dim; i++)
+  for (int i = 0; i < d; i++)
     if (compare(elem[i], 0))
       elem[i] = 0;
 
-  Vector n(dim, std::move(elem));
+  Vector n(d, std::move(elem));
   
   return n;
 }
 
 Vector cross(Vector& v1, Vector& v2)
 {
-  return v1.cross(v1, v2);
+  return v1.cross(v2);
 }
 
-Vector Vector::add(Vector& v1, Vector& v2)
+Vector Vector::add(Vector& v2)
 {
-  if (v1.dimension != v2.dimension)
+  int d = this->dimension;
+  if (d != v2.dimension)
   {
     std::cout << "Undefined.\n";
     //return NAN; 
   }
 
-  int dim = v1.dimension;
-  unique_ptr<double[]> elem(new double[dim]);
-  for (int i = 0; i < dim; i++)
-    elem[i] = v1.arrow[i] + v2.arrow[i];
+  unique_ptr<double[]> elem(new double[d]);
+  for (int i = 0; i < d; i++)
+    elem[i] = this->arrow[i] + v2.arrow[i];
 
-  Vector v1v2(dim, std::move(elem));
+  Vector v1v2(d, std::move(elem));
 
   return v1v2;
 }
 
 Vector add(Vector& v1, Vector& v2)
 {
-  return v1.add(v1, v2);
+  return std::move(v1.add(v2));
 }
 
-Vector Vector::subtract(Vector& v1, Vector& v2)
+Vector Vector::subtract(Vector& v2)
 {
-  if (v1.dimension != v2.dimension)
+  int d = this->getDimension();
+  if (d != v2.dimension)
   {
     std::cout << "Undefined.\n";
     //return NAN;
   }
 
-  unique_ptr<double[]> elem(new double[v1.dimension]);
-  for (int i = 0; i < v1.dimension; i++)
-    elem[i] = v1.arrow[i] - v2.arrow[i];
+  unique_ptr<double[]> elem(new double[d]);
+  for (int i = 0; i < d; i++)
+    elem[i] = this->arrow[i] - v2.arrow[i];
 
-  Vector v1mv2(v1.dimension, std::move(elem));
+  Vector v1mv2(d, std::move(elem));
 
   return v1mv2;
 }
 
 Vector subtract(Vector& v1, Vector& v2)
 {
-  return v1.subtract(v1, v2);
+  return v1.subtract(v2);
 }
 
+// The way this method and unit() are written moves the original data in the vector
+// Perhaps try something different
 Vector Vector::scalar(double s)
 {
-  int dim = this->dimension;
+  int d = this->dimension;
   unique_ptr<double[]> elem = std::move(this->arrow);
-  for (int i = 0; i < dim; i++)
+  for (int i = 0; i < d; i++)
   {
     elem[i] = s * elem[i];
   }
 
-  Vector sv(dim, std::move(elem));
+  Vector sv(d, std::move(elem));
 
-  return std::move(sv);
+  return sv;
 }
 
 Vector Vector::unit()
@@ -193,16 +220,18 @@ Vector Vector::unit()
   return u;
 }
 
-bool Vector::equals(Vector& v1, Vector& v2)
+bool Vector::equals(Vector& v2)
 {
-  if (v1.dimension != v2.dimension)
+  int d = this->dimension;
+
+  if (d != v2.dimension)
   {
     return false; 
   } 
 
-  for (int i = 0; i < v1.dimension; i++)
+  for (int i = 0; i < d; i++)
   {
-    if (v1.arrow[i] != v2.arrow[i])
+    if (this->arrow[i] != v2.arrow[i])
     {
       return false;
     }
@@ -245,7 +274,7 @@ Vector operator/(Vector& v, double d)
 
 bool operator==(Vector& v1, Vector& v2)
 {
-  return v1.equals(v1, v2);
+  return v1.equals(v2);
 }
 
 void Vector::print()
