@@ -17,8 +17,9 @@ int main()
 		return 0;
 	}
 
-	std::vector<std::vector<double> > entries(numRows, std::vector<double>(numColumns));
-	for (int i = 0; i < numRows; i++) 
+	auto entries = std::make_unique<std::unique_ptr<double[]>[]>(numRows);
+	//std::unique_ptr<std::unique_ptr<double[]>[]> entries(numRows, std::unique_ptr<double[]>(numColumns));
+	for (int i = 0; i < numRows; i++)
 	{
 		for (int j = 0; j < numColumns; j++)
 		{
@@ -26,13 +27,14 @@ int main()
 			std::cin >> entries[i][j];
 		}
 	}
-	
+
 	std::cout << "\nMatrix m_1 = " << std::endl;
 	Matrix m1(numRows, numColumns, std::move(entries));
 	m1.print();
 
-	std::vector<std::vector<double> > entries2(numRows, std::vector<double>(numColumns));
-	for (int i = 0; i < numRows; i++) 
+	auto entries2 = std::make_unique<std::unique_ptr<double[]>[]>(numRows);//, std::make_unique<double[]>(mColumns));
+	//std::unique_ptr<std::unique_ptr<double[]>[]> entries2(numRows, std::unique_ptr<double[]>(numColumns));
+	for (int i = 0; i < numRows; i++)
 	{
 		for (int j = 0; j < numColumns; j++)
 		{

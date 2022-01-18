@@ -5,9 +5,8 @@
 #include <complex>
 #include <iostream>
 #include <exception>
+#include <limits>
 #include <memory>
-
-using std::unique_ptr;
 
 struct VectorException : public std::exception {
    const char* nonPos () const throw () {
@@ -25,14 +24,14 @@ class Vector {
 
   private:
 
-    unique_ptr<double[]> arrow;
     int dimension;
+    std::unique_ptr<double[]> arrow;
 
   public:
 
     Vector(int dim);                      // create a unit vector of dimension dim
 
-    Vector(int dim, unique_ptr<double[]> elem);  // create a vector with elements elem and dimension dim
+    Vector(int dim, std::unique_ptr<double[]> elem);  // create a vector with elements elem and dimension dim
 
     Vector(Vector&& v);
 
@@ -45,11 +44,11 @@ class Vector {
     int size();
 
     int length();
-    
+
     double* getArrow();       // accessor for arrow
     // unique_ptr<double[]>& getArrow();      // accessor for arrow
 
-    void setArrow(unique_ptr<double[]> elem);
+    void setArrow(std::unique_ptr<double[]> elem);
 
     double norm(Vector& v);                        // norm of this = v; ||v||
 
@@ -67,9 +66,9 @@ class Vector {
 
     bool equals(Vector& v2);               // determines whether two vectors are equal
 
-    void print();                         // print vector contents (x1, x2, ..., xn, ...)
+    void print() const;                         // print vector contents (x1, x2, ..., xn, ...)
 
-    //~Vector();
+    ~Vector() = default;
 };
 
 Vector add(Vector& v1, Vector& v2);
@@ -80,4 +79,3 @@ Vector operator*(Vector&, double);
 Vector operator/(Vector&, double);
 bool operator==(Vector&, Vector&);
 bool compare(double a, double b);
-

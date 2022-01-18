@@ -1,88 +1,77 @@
-
+#include <list>
+#include <numeric>
+#include <sstream>
+#include <string>
+#include <vector>
 #include "vector.cpp"
+
+std::vector<std::string> getVectorInput()
+{
+    std::string csvInput;
+    std::vector<std::string> components;
+    std::cout << "Enter vector as csv, no other characters." << std::endl;
+    std::getline(std::cin, csvInput);
+    std::stringstream s_stream(csvInput); //create string stream from the string
+    while(s_stream.good())
+    {
+        std::string component;
+        std::getline(s_stream, component, ','); //get first string delimited by comma
+        components.push_back(component);
+    }
+    return components;
+}
+
+Vector createVectorFrom(std::vector<std::string> components)
+{
+  std::unique_ptr<double[]> arrow = std::make_unique<double[]>(components.size());
+  std::list<int> ell(components.size());
+  std::iota(ell.begin(), ell.end(), 0);
+  for (auto i : ell)
+  {
+    arrow[i] = std::stod(components[i]);
+  }
+  Vector vec(components.size(), std::move(arrow));
+  return std::move(vec);
+}
 
 int main()
 {
   int dim;
-  std::cout << "Enter integer for dimension: ";
-  std::cin >> dim;
+  bool awaitingInput = true;
+  std::vector<Vector> vectors;
 
-  try
+  while (awaitingInput)
   {
-    if (dim <= 0)
-      throw VectorException();
-  } catch (VectorException& e) {
-      std::cout << "Error! :0( " << e.nonPos() << std::endl;
-      return 0;
+    std::cout << "Adding vectors to list..." << std::endl;
+    auto components = getVectorInput();
+    Vector v = std::move(createVectorFrom(components));
+    vectors.push_back(std::move(v));
+
+    std::cout << "Do you want to add more? y/n ";
+    std::string response;
+    do
+    {
+      //std::cin.clear(); // repair instream
+      // clear the buffer
+      //std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+      std::getline(std::cin, response);
+    }
+    while (/*!std::cin.fail() && */response.find('y') == std::string::npos
+                            && response.find('n') == std::string::npos);
+
+    if (response.find('y') != std::string::npos)
+      awaitingInput = true;
+    else if (response.find('n') != std::string::npos)
+      awaitingInput = false;
+
+    std::cin.clear();
+    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
   }
 
-  unique_ptr<double[]> elem(new double[dim]);
-  for (int i = 0; i < dim; i++)
-  {
-    std::cout << "Enter value for v_1 component " << i << ": ";
-    std::cin >> elem[i];
-    
-  }
-  Vector v1(dim, std::move(elem));
-  v1.print();
+  for (const auto &v : vectors)
+    v.print();
 
-  double norm = v1.norm(v1);
-  std::cout << "norm of v_1 = " << norm << "\n";
-  
-  unique_ptr<double[]> elem2(new double[dim]);
-  for (int i = 0; i < dim; i++)
-  {
-    std::cout << "Enter value for v_2 component " << i << ": ";
-    std::cin >> elem2[i];
-  }
-  Vector v2(dim, std::move(elem2));
-  v2.print();
-
-  double norm2 = v2.norm(v2);
-  std::cout << "norm of v_2 = " << norm2 << "\n";
-
-  double dp = dot(v1, v2);
-  std::cout << "v_1 dot v_2 = " << dp << "\n";
-
-  Vector n(dim);
-  try {
-    n = cross(v1, v2);
-    std::cout << "v_1 cross v_2 = ";
-    n.print();
-  } catch (VectorException& e) {
-    std::cout << e.crossUndef() << std::endl;
-  }
-
-  Vector v3 = v1 + v2;
-  std::cout << "v_1 + v_2 = ";
-  v3.print();
-  
-  Vector v4 = v1 - v2;
-  std::cout << "v_1 - v_2 = ";
-  v4.print();
-
-  bool tf = v1 == v2;
-  std::cout << "\ndoes v_1 = v_2? ";
-  if (tf)
-    std::cout << "yes\n";
-  else
-    std::cout << "no\n";
-
-  v1 = 2 * v1;  
-  std::cout << "2 * v_1 = "; 
-  v1.print();
-  v1 = v1 / 2;
-  std::cout << "v_1 / 2 = ";
-  v1.print();
-
-  int d = v4.getDimension();
-  if (d <= 0)
-    return 0;
-  std::cout << "\nv4 belongs to R^" << d << std::endl;
-  std::cout << "\nTesting operator[].\nEntry d in v1 - v2, i.e., v4[d] = " << v4[d-1] << std::endl;
-
-
-  std::cout << "Hope it worked :-)\nPress any key to end program.";
+  std::cout << "Hope it worked :-)\nPress return key to end program.";
   std::getchar();
   std::getchar();
 }

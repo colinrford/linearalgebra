@@ -23,7 +23,7 @@ Vector::Vector(int dim)
 }
 
 // For now I'll just deal with real numbers and come back later to update for general fields
-Vector::Vector(int dim, unique_ptr<double[]> elem) : arrow(std::move(elem))
+Vector::Vector(int dim, std::unique_ptr<double[]> elem) : arrow(std::move(elem))
 {
   try {
     if (dim <= 0)
@@ -31,16 +31,16 @@ Vector::Vector(int dim, unique_ptr<double[]> elem) : arrow(std::move(elem))
   } catch (VectorException& e) {
     cout << "Error! :0( " << e.nonPos() << std::endl;
   }
-  
+
   dimension = dim;
 }
 
-Vector::Vector(Vector&& v) : arrow{std::move(v.arrow)}, dimension{v.dimension} 
+Vector::Vector(Vector&& v) : arrow{std::move(v.arrow)}, dimension{v.dimension}
 {
   v.dimension = 0;
 }
 
-Vector& Vector::operator=(Vector&& v) 
+Vector& Vector::operator=(Vector&& v)
 {
      this->setArrow(std::move(v.arrow));
      this->dimension = v.dimension;
@@ -53,7 +53,7 @@ auto Vector::operator[](int index) -> decltype(arrow[index])
   if (index >= this->dimension)
     throw VectorException();
 
-  return this->getArrow()[index];
+  return arrow[index];
 }
 
 int Vector::getDimension()
@@ -77,9 +77,9 @@ double* Vector::getArrow()
   return arrow.get();
 }
 
-void Vector::setArrow(unique_ptr<double[]> elem)
+void Vector::setArrow(std::unique_ptr<double[]> elem)
 {
-  arrow = elem;
+  arrow = std::move(elem);
 }
 
 double Vector::norm(Vector& v)
@@ -96,13 +96,13 @@ double Vector::dot(Vector& v2)
     //return NAN;
   }
 
-  double dot;
+  double dot = 0.0;
 
   for (int i = 0; i < d; i++)
   {
     dot += this->arrow[i] * v2.arrow[i];
   }
-  
+
   bool boo = compare(dot, 0);
   if (boo)
     dot = 0;
@@ -123,17 +123,17 @@ Vector Vector::cross(Vector& v2)
     throw VectorException();
   }
 
-  unique_ptr<double[]> elem(new double[d]);
+  std::unique_ptr<double[]> elem(new double[d]);
   elem[0] = this->arrow[1] * v2.arrow[2] - this->arrow[2] * v2.arrow[1];
   elem[1] = -(this->arrow[0] * v2.arrow[2] - this->arrow[2] * v2.arrow[0]);
   elem[2] = this->arrow[0] * v2.arrow[1] - this->arrow[1] * v2.arrow[0];
-  
+
   for (int i = 0; i < d; i++)
     if (compare(elem[i], 0))
       elem[i] = 0;
 
   Vector n(d, std::move(elem));
-  
+
   return n;
 }
 
@@ -148,10 +148,10 @@ Vector Vector::add(Vector& v2)
   if (d != v2.dimension)
   {
     std::cout << "Undefined.\n";
-    //return NAN; 
+    //return NAN;
   }
 
-  unique_ptr<double[]> elem(new double[d]);
+  std::unique_ptr<double[]> elem(new double[d]);
   for (int i = 0; i < d; i++)
     elem[i] = this->arrow[i] + v2.arrow[i];
 
@@ -174,7 +174,7 @@ Vector Vector::subtract(Vector& v2)
     //return NAN;
   }
 
-  unique_ptr<double[]> elem(new double[d]);
+  std::unique_ptr<double[]> elem(new double[d]);
   for (int i = 0; i < d; i++)
     elem[i] = this->arrow[i] - v2.arrow[i];
 
@@ -193,7 +193,7 @@ Vector subtract(Vector& v1, Vector& v2)
 Vector Vector::scalar(double s)
 {
   int d = this->dimension;
-  unique_ptr<double[]> elem = std::move(this->arrow);
+  std::unique_ptr<double[]> elem = std::move(this->arrow);
   for (int i = 0; i < d; i++)
   {
     elem[i] = s * elem[i];
@@ -216,7 +216,7 @@ Vector Vector::unit()
   Vector u(this->dimension, std::move(this->arrow));
 
   this->dimension = 0;
-  
+
   return u;
 }
 
@@ -226,8 +226,8 @@ bool Vector::equals(Vector& v2)
 
   if (d != v2.dimension)
   {
-    return false; 
-  } 
+    return false;
+  }
 
   for (int i = 0; i < d; i++)
   {
@@ -236,7 +236,7 @@ bool Vector::equals(Vector& v2)
       return false;
     }
   }
-  
+
   return true;
 }
 
@@ -267,7 +267,7 @@ Vector operator*(Vector& v, double d)
 Vector operator/(Vector& v, double d)
 {
   double d_inv = 1 / d;
-  
+
   Vector u = v.scalar(d_inv);
   return u;
 }
@@ -277,7 +277,7 @@ bool operator==(Vector& v1, Vector& v2)
   return v1.equals(v2);
 }
 
-void Vector::print()
+void Vector::print() const
 {
   std::cout << "(";
 
@@ -294,7 +294,7 @@ void Vector::print()
 
 bool compare(double a, double b)
 {
-  double epsilon = 1E-40;
+  double epsilon = std::numeric_limits<double>::epsilon();
 
   if (abs(b - a) < epsilon)
     return true;

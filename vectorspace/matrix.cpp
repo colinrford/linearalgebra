@@ -1,8 +1,17 @@
 
 #include "matrix.h"
+#include <cassert>
+#include <list>
+#include <numeric>
+
+auto makeIndexingSet = [](int n) -> std::list<int> {
+	std::list<int> ell(n);
+	std::iota(ell.begin(), ell.end(), 0);
+	return ell;
+};
 
 // The basic constructor just creates an n x m identity matrix
-Matrix::Matrix(int n, int m) 
+Matrix::Matrix(int n, int m)
 {
 	try {
 		if (n <= 0 || m <= 0)
@@ -14,12 +23,24 @@ Matrix::Matrix(int n, int m)
 	nRows = n;
 	mColumns = m;
 
-	std::vector<std::vector<double> > matrix(nRows, std::vector<double>(mColumns));
+	matrix = std::make_unique<std::unique_ptr<double[]>[]>(nRows);//, std::make_unique<double[]>(mColumns));
 
+	auto rose = makeIndexingSet(nRows);
+	auto calls = makeIndexingSet(mColumns);
+
+	for (auto rho : rose)
+		matrix[rho] = std::make_unique<double[]>(mColumns);
+
+	for (auto rho : rose)
+		for (auto xi : calls)
+			if (rho == xi)
+				matrix[rho][xi] = 1;
+			else
+				matrix[rho][xi] = 0;
 }
 
 // Create matrix from given matrix data
-Matrix::Matrix(int n, int m, std::vector<std::vector<double>> mtrx) : matrix{std::move(mtrx)}
+Matrix::Matrix(int n, int m, std::unique_ptr<std::unique_ptr<double[]>[]> mtrx) : matrix{std::move(mtrx)}
 {
 	try {
 		if (n <= 0 || m <= 0)
@@ -31,9 +52,14 @@ Matrix::Matrix(int n, int m, std::vector<std::vector<double>> mtrx) : matrix{std
 	nRows = n;
 	mColumns = m;
 }
+/*
+Matrix::Matrix(std::vector<std::vector<double>> mtrx)
+{
 
-Matrix::Matrix(Matrix&& mtrx) : matrix{std::move(mtrx.matrix)}, 
-																nRows{mtrx.nRows}, 
+}*/
+
+Matrix::Matrix(Matrix&& mtrx) : matrix{std::move(mtrx.matrix)},
+																nRows{mtrx.nRows},
 																mColumns{mtrx.mColumns}
 {
   mtrx.nRows = mtrx.mColumns = 0;
@@ -47,26 +73,24 @@ Matrix& Matrix::operator=(Matrix&& mtrx)
 }
 
 
-auto Matrix::operator[](int index) -> decltype(this->getMatrix()[index])
+auto Matrix::operator[](int index) -> decltype(matrix[index])
 {
-	int numColumns = this->getNumColumns();
-	if (index >= numColumns)
+	int numRows = this->getNumRows();
+	if (index >= numRows)
 		throw MatrixException();
 
-	return this->getMatrix()[index];
+	return this->matrix[index];
 }
 
-// I'd like this to be a (non-owning) raw pointer, if possible.
-// Anything acceptable that is lightweight!!
-std::vector<std::vector<double> > Matrix::getMatrix()
+/*double** Matrix::getMatrix()
 {
-	std::vector<std::vector<double> > m = matrix;
+	//auto m = matrix.get();
 
-	return m;
-}
+	return this->matrix;
+}*/
 
-// 
-void Matrix::setMatrix(std::vector<std::vector<double> > mtrx)
+//
+void Matrix::setMatrix(std::unique_ptr<std::unique_ptr<double[]>[]> mtrx)
 {
 	matrix = std::move(mtrx);
 }
@@ -99,8 +123,8 @@ double Matrix::getEntry(int i, int j)
 	if ((i > numRows) || (j > numColumns))
 		throw MatrixException();
 
-	std::vector<double> row = this->getMatrix()[i];
-	return row[j];
+	//double entry = this->matrix[i][j];
+	return this->matrix[i][j];
 }
 
 bool canAdd(Matrix& m_1, Matrix& m_2)
@@ -117,7 +141,7 @@ bool canAdd(Matrix& m_1, Matrix& m_2)
 		return true;
 }
 
-// 
+//
 Matrix Matrix::add(Matrix& m_2)
 {
 	if (!canAdd(*this, m_2))
@@ -125,16 +149,20 @@ Matrix Matrix::add(Matrix& m_2)
 
 	int numRows = this->getNumRows();
 	int numColumns = this->getNumColumns();
+	auto rose = makeIndexingSet(numRows);
+	auto calls = makeIndexingSet(numColumns);
 
-	std::vector<std::vector<double> > entries(numRows, std::vector<double>(numColumns));
+	auto entries = std::make_unique<std::unique_ptr<double[]>[]>(numRows);
+	for (auto rho : rose)
+		entries[rho] = std::make_unique<double[]>(numColumns);
 
-	for (int i = 0; i < numRows; i++)
-		for (int j = 0; j < numColumns; j++)
-			entries[i][j] = this->getEntry(i, j) + m_2.getEntry(i, j);
+	for (auto rho : rose)
+		for (auto xi : calls)
+			entries[rho][xi] = this->getEntry(rho, xi) + m_2.getEntry(rho, xi);
 
 	Matrix m1pm2(numRows, numColumns, std::move(entries));
 
-	return m1pm2;
+	return std::move(m1pm2);
 }
 
 Matrix add(Matrix& m_1, Matrix& m_2)
@@ -147,7 +175,7 @@ bool canSubtract(Matrix& m_1, Matrix& m_2)
 	return canAdd(m_1, m_2);
 }
 
-// 
+//
 Matrix Matrix::subtract(Matrix& m_2)
 {
 	if (!canSubtract(*this, m_2))
@@ -155,16 +183,20 @@ Matrix Matrix::subtract(Matrix& m_2)
 
 	int numRows = this->getNumRows();
 	int numColumns = this->getNumColumns();
+	auto rose = makeIndexingSet(numRows);
+	auto calls = makeIndexingSet(numColumns);
 
-	std::vector<std::vector<double> > entries(numRows, std::vector<double>(numColumns));
+	auto entries = std::make_unique<std::unique_ptr<double[]>[]>(numRows);
+	for (auto rho : rose)
+		entries[rho] = std::make_unique<double[]>(numColumns);
 
-	for (int i = 0; i < numRows; i++)
-		for (int j = 0; j < numColumns; j++)
-			entries[i][j] = this->getEntry(i, j) - m_2.getEntry(i, j);
+	for (auto rho : rose)
+		for (auto xi : calls)
+			entries[rho][xi] = this->getEntry(rho, xi) - m_2.getEntry(rho, xi);
 
 	Matrix m1pm2(numRows, numColumns, std::move(entries));
 
-	return m1pm2;
+	return std::move(m1pm2);
 }
 
 Matrix subtract(Matrix& m_1, Matrix& m_2)
@@ -183,6 +215,8 @@ bool canMultiply(Matrix& m_1, Matrix& m_2)
 		return false;
 }
 
+
+
 // Matrix multiplication
 Matrix Matrix::multiply(Matrix& mp)
 {
@@ -195,34 +229,22 @@ Matrix Matrix::multiply(Matrix& mp)
 	assert(numColumnsNM == numRowsMP);
 	int numColumnsMP = mp.getNumColumns();
 
-	std::vector<std::vector<double> > nm = this->getMatrix();
-	std::vector<std::vector<double> > _mp = mp.getMatrix();
-	std::vector<std::vector<double> > entries(numRowsNM, std::vector<double>(numColumnsMP));
+	auto rowsNP = makeIndexingSet(numRowsNM);
+	auto columnsNP = makeIndexingSet(numColumnsMP);
+	auto columnsNM = makeIndexingSet(numColumnsNM);
 
-	/* placeholder lol 
-	for (this : that) 
-	{
-		for (that : this)
-		{
-	
-		}
-	}
-	*/
+	auto entries = std::make_unique<std::unique_ptr<double[]>[]>(numRowsNM);
+	for (auto row : rowsNP)
+		entries[row] = std::make_unique<double[]>(numColumnsMP);
 
-	for (int i = 0; i < numRowsNM; i++)
-	{
-		for (int j = 0; j < numColumnsMP; j++)
-		{
-			for (int k = 0; k < numColumnsNM; k++)
-			{
-				entries[i][j] += nm[i][k] * _mp[k][j];
-			}
-		}
-	}
+	for (auto i : rowsNP)
+		for (auto j : columnsNP)
+			for (auto k : columnsNM)
+				entries[i][j] += this->matrix[i][k] * mp.matrix[k][j];
 
-	Matrix np(numRowsNM, numColumnsMP, std::move(entries));
+	Matrix np(rowsNP.size(), columnsNP.size(), std::move(entries));
 
-	return np; 
+	return std::move(np);
 }
 
 Matrix multiply(Matrix& nm, Matrix& mp)
@@ -238,10 +260,7 @@ bool isInvertible(Matrix& nm)
 		return false;
 	}
 	if (compare(0, nm.det()))
-	{
-		throw MatrixException();
 		return false;
-	}
 
 	return true;
 }
@@ -258,11 +277,12 @@ Matrix Matrix::inverse()
 	int numRows = this->getNumRows();
 	int numColumns = this->getNumColumns();
 
-	std::vector<std::vector<double> > entries(numRows, std::vector<double>(numColumns));
-	
+	auto entries = std::make_unique<std::unique_ptr<double[]>[]>(numRows);//, std::make_unique<double[]>(mColumns));
+	//std::unique_ptr<std::unique_ptr<double[]>[]> entries(numRows, std::unique_ptr<double[]>(numColumns));
+
 	Matrix m(numRows, numColumns);
 
-	return m;
+	return std::move(m);
 }
 
 // TODO: implement
@@ -282,16 +302,16 @@ double Matrix::det()
 /* INPUT: A - array of pointers to rows of a square matrix having dimension N
  *        Tol - small tolerance number to detect failure when the matrix is near degenerate
  * OUTPUT: Matrix A is changed, it contains a copy of both matrices L-E and U as A=(L-E)+U such that P*A=L*U.
- *        The permutation matrix is not stored as a matrix, but in an integer vector P of size N+1 
- *        containing column indexes where the permutation matrix has "1". The last element P[N]=S+N, 
- *        where S is the number of row exchanges needed for determinant computation, det(P)=(-1)^S    
+ *        The permutation matrix is not stored as a matrix, but in an integer unique_ptr P of size N+1
+ *        containing column indexes where the permutation matrix has "1". The last element P[N]=S+N,
+ *        where S is the number of row exchanges needed for determinant computation, det(P)=(-1)^S
  */
 
 /*
-int LUPDecompose(double **A, int N, double Tol, int *P) 
+int LUPDecompose(double **A, int N, double Tol, int *P)
 {
 
-    int i, j, k, imax; 
+    int i, j, k, imax;
     double maxA, *ptr, absA;
 
     for (i = 0; i <= N; i++)
@@ -299,26 +319,26 @@ int LUPDecompose(double **A, int N, double Tol, int *P)
         P[i] = i; // Unit permutation matrix, P[N] initialized with N
     }
 
-    for (i = 0; i < N; i++) 
+    for (i = 0; i < N; i++)
     {
         maxA = 0.0;
         imax = i;
 
         for (k = i; k < N; k++)
         {
-           if ((absA = fabs(A[k][i])) > maxA) 
+           if ((absA = fabs(A[k][i])) > maxA)
            {
            		maxA = absA;
            		imax = k;
            }
          }
 
-        if (maxA < Tol) 
+        if (maxA < Tol)
         {
 					return 0; // failure, matrix is degenerate
 				}
 
-        if (imax != i) 
+        if (imax != i)
         {
             // pivoting P
             j = P[i];
@@ -334,7 +354,7 @@ int LUPDecompose(double **A, int N, double Tol, int *P)
             P[N]++;
         }
 
-        for (j = i + 1; j < N; j++) 
+        for (j = i + 1; j < N; j++)
         {
         	A[j][i] /= A[i][i];
 
@@ -345,15 +365,15 @@ int LUPDecompose(double **A, int N, double Tol, int *P)
         }
     }
 
-    return 1;  // decomposition done 
+    return 1;  // decomposition done
 }
 */
 
-/* INPUT: A,P filled in LUPDecompose; N - dimension. 
+/* INPUT: A,P filled in LUPDecompose; N - dimension.
  * OUTPUT: Function returns the determinant of the initial matrix
  */
 /*
-double LUPDeterminant(Matrix& A, int* P, int N) 
+double LUPDeterminant(Matrix& A, int* P, int N)
 {
 
 	double det = A[0][0];
@@ -362,13 +382,12 @@ double LUPDeterminant(Matrix& A, int* P, int N)
   	det *= A[i][i];
 
   if ((P[N] - N) % 2 == 0)
-    return det; 
+    return det;
   else
     return -det;
 }
 */
 
-// Check if the given matrix is square
 bool Matrix::isSquare()
 {
 	int numRows = this->getNumRows();
@@ -389,36 +408,33 @@ bool Matrix::equals(Matrix& m_2)
 
   if ((numRowsM_1 != numRowsM_2) || (numColumnsM_1 != numColumnsM_2))
   {
-    return false; 
+    return false;
   }
 
-  for (int i = 0; i < numRowsM_1; i++)
-  {
-  	for (int j = 0; j < numColumnsM_1; j++)
-  	{
-    	if (this->matrix[i][j] != m_2.matrix[i][j])
-    	{
+	auto rose = makeIndexingSet(numRowsM_1);
+	auto calls = makeIndexingSet(numColumnsM_1);
+
+  for (auto rho : rose)
+  	for (auto xi : calls)
+    	if (!compare(this->matrix[rho][xi], m_2.matrix[rho][xi]))
      		return false;
-    	}
-    }
-  }
-  
+
   return true;
 }
 
 Matrix operator+(Matrix& m_1, Matrix& m_2)
 {
-  return add(m_1, m_2);
+  return std::move(add(m_1, m_2));
 }
 
 Matrix operator-(Matrix& m_1, Matrix& m_2)
 {
-  return subtract(m_1, m_2);
+  return std::move(subtract(m_1, m_2));
 }
 
 Matrix operator*(Matrix& m_1, Matrix& m_2)
 {
-	return multiply(m_1, m_2);
+	return std::move(multiply(m_1, m_2));
 }
 
 bool operator==(Matrix& m_1, Matrix& m_2)
@@ -428,39 +444,36 @@ bool operator==(Matrix& m_1, Matrix& m_2)
 
 void Matrix::print()
 {
-  std::vector<std::vector<double> > mtrx = this->getMatrix();
 
-  int numRows = this->getNumRows();
-  int numColumns = this->getNumColumns();
+	auto rowindices = makeIndexingSet(this->getNumRows());
+	auto colindices = makeIndexingSet(this->getNumColumns());
 
   std::cout << "[";
 
-  // i has expected type of std::vector<T>. Think of it as one of the rows in mtrx
-  for (int i = 0; i < numRows; i++)
+  for (int i : rowindices)
   {
   	std::cout << "(";
 
-  	// j has expected type of T (e.g. double). An entry of mtrx
-  	for (int j = 0; j < numColumns; j++)
+  	for (int j : colindices)
   	{
-    	if (j == (numColumns - 1))
-      	std::cout << mtrx[i][j];
+    	if (j == (colindices.back() - 1))
+      	std::cout << this->matrix[i][j];
     	else
-      	std::cout << mtrx[i][j] << ", ";
+      	std::cout << this->matrix[i][j] << ", ";
   	}
 
-  	if (i == (numRows - 1))
+  	if (i == (rowindices.back() - 1))
   		std::cout << ")";
   	else
-  		std::cout << "),\n";
+  		std::cout << ")," << std::endl;
   }
 
-  std::cout << "]\n";
+  std::cout << "]" << std::endl;
 }
 
 bool compare(double a, double b)
 {
-  double epsilon = 1E-40;
+  double epsilon = 2 * std::numeric_limits<double>::epsilon();
 
   if (abs(b - a) < epsilon)
     return true;
