@@ -22,12 +22,10 @@ Matrix::Matrix(int n, int m)
 
 	nRows = n;
 	mColumns = m;
-
-	matrix = std::make_unique<std::unique_ptr<double[]>[]>(nRows);//, std::make_unique<double[]>(mColumns));
-
 	auto rose = makeIndexingSet(nRows);
 	auto calls = makeIndexingSet(mColumns);
 
+	matrix = std::make_unique<std::unique_ptr<double[]>[]>(nRows);
 	for (auto rho : rose)
 		matrix[rho] = std::make_unique<double[]>(mColumns);
 
@@ -39,7 +37,6 @@ Matrix::Matrix(int n, int m)
 				matrix[rho][xi] = 0;
 }
 
-// Create matrix from given matrix data
 Matrix::Matrix(int n, int m, std::unique_ptr<std::unique_ptr<double[]>[]> mtrx) : matrix{std::move(mtrx)}
 {
 	try {
@@ -89,7 +86,6 @@ auto Matrix::operator[](int index) -> decltype(matrix[index])
 	return this->matrix;
 }*/
 
-//
 void Matrix::setMatrix(std::unique_ptr<std::unique_ptr<double[]>[]> mtrx)
 {
 	matrix = std::move(mtrx);
@@ -123,7 +119,6 @@ double Matrix::getEntry(int i, int j)
 	if ((i > numRows) || (j > numColumns))
 		throw MatrixException();
 
-	//double entry = this->matrix[i][j];
 	return this->matrix[i][j];
 }
 
@@ -141,7 +136,6 @@ bool canAdd(Matrix& m_1, Matrix& m_2)
 		return true;
 }
 
-//
 Matrix Matrix::add(Matrix& m_2)
 {
 	if (!canAdd(*this, m_2))
@@ -175,7 +169,6 @@ bool canSubtract(Matrix& m_1, Matrix& m_2)
 	return canAdd(m_1, m_2);
 }
 
-//
 Matrix Matrix::subtract(Matrix& m_2)
 {
 	if (!canSubtract(*this, m_2))
@@ -215,9 +208,6 @@ bool canMultiply(Matrix& m_1, Matrix& m_2)
 		return false;
 }
 
-
-
-// Matrix multiplication
 Matrix Matrix::multiply(Matrix& mp)
 {
 	if (!canMultiply(*this, mp))

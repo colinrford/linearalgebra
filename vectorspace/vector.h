@@ -46,7 +46,6 @@ class Vector {
     int length();
 
     double* getArrow();       // accessor for arrow
-    // unique_ptr<double[]>& getArrow();      // accessor for arrow
 
     void setArrow(std::unique_ptr<double[]> elem);
 

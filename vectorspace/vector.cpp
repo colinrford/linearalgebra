@@ -123,7 +123,7 @@ Vector Vector::cross(Vector& v2)
     throw VectorException();
   }
 
-  std::unique_ptr<double[]> elem(new double[d]);
+  std::unique_ptr<double[]> elem = std::make_unique<double[]>(d);
   elem[0] = this->arrow[1] * v2.arrow[2] - this->arrow[2] * v2.arrow[1];
   elem[1] = -(this->arrow[0] * v2.arrow[2] - this->arrow[2] * v2.arrow[0]);
   elem[2] = this->arrow[0] * v2.arrow[1] - this->arrow[1] * v2.arrow[0];
@@ -151,7 +151,7 @@ Vector Vector::add(Vector& v2)
     //return NAN;
   }
 
-  std::unique_ptr<double[]> elem(new double[d]);
+  std::unique_ptr<double[]> elem = std::make_unique<double[]>(d);
   for (int i = 0; i < d; i++)
     elem[i] = this->arrow[i] + v2.arrow[i];
 
@@ -174,7 +174,7 @@ Vector Vector::subtract(Vector& v2)
     //return NAN;
   }
 
-  std::unique_ptr<double[]> elem(new double[d]);
+  std::unique_ptr<double[]> elem = std::make_unique<double[]>(d);
   for (int i = 0; i < d; i++)
     elem[i] = this->arrow[i] - v2.arrow[i];
 
