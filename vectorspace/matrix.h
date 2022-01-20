@@ -41,6 +41,10 @@ class Matrix {
 
 		Matrix(int n, int m, std::unique_ptr<std::unique_ptr<double[]>[]> mtrx);
 
+		Matrix(std::vector<std::vector<double> > mtrx);
+
+		Matrix(std::vector<Vector> rows);
+
 		Matrix(Matrix&& mtrx);
 
 		Matrix& operator=(Matrix&& mtrx);

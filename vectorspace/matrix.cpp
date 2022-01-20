@@ -10,6 +10,15 @@ auto makeIndexingSet = [](int n) -> std::list<int> {
 	return ell;
 };
 
+auto makeMatrix_unique = [](int numRows, int numColumns) {
+	auto mtrx = std::make_unique<std::unique_ptr<double[]>[]>(numRows);
+	auto rose = makeIndexingSet(numRows);
+	for (auto rho : rose)
+		mtrx[rho] = std::make_unique<double[]>(numColumns);
+
+	return std::move(mtrx);
+};
+
 // The basic constructor just creates an n x m identity matrix
 Matrix::Matrix(int n, int m)
 {
@@ -25,9 +34,7 @@ Matrix::Matrix(int n, int m)
 	auto rose = makeIndexingSet(nRows);
 	auto calls = makeIndexingSet(mColumns);
 
-	matrix = std::make_unique<std::unique_ptr<double[]>[]>(nRows);
-	for (auto rho : rose)
-		matrix[rho] = std::make_unique<double[]>(mColumns);
+	matrix = makeMatrix_unique(n, m);
 
 	for (auto rho : rose)
 		for (auto xi : calls)
@@ -37,7 +44,9 @@ Matrix::Matrix(int n, int m)
 				matrix[rho][xi] = 0;
 }
 
-Matrix::Matrix(int n, int m, std::unique_ptr<std::unique_ptr<double[]>[]> mtrx) : matrix{std::move(mtrx)}
+Matrix::Matrix(int n, int m,
+								std::unique_ptr<std::unique_ptr<double[]>[]> mtrx)
+								: matrix{std::move(mtrx)}
 {
 	try {
 		if (n <= 0 || m <= 0)
@@ -49,12 +58,35 @@ Matrix::Matrix(int n, int m, std::unique_ptr<std::unique_ptr<double[]>[]> mtrx) 
 	nRows = n;
 	mColumns = m;
 }
-/*
-Matrix::Matrix(std::vector<std::vector<double>> mtrx)
+
+Matrix::Matrix(std::vector<std::vector<double> > mtrx)
 {
+	auto rose = makeIndexingSet(mtrx.size());
+	auto calls = makeIndexingSet(mtrx.front().size());
 
-}*/
+	matrix = makeMatrix_unique(rose.size(), calls.size());
 
+	for (auto rho : rose)
+		for (auto xi : calls)
+			matrix[rho][xi] = mtrx[rho][xi];
+}
+/*
+Matrix::Matrix(std::vector<Vector> rows)
+{
+	auto firstRow = &rows.front();
+	int numColumns = firstRow->size();
+	auto rose = makeIndexingSet(rows.size());
+	auto calls = makeIndexingSet(numColumns);
+
+	matrix = std::make_unique<std::unique_ptr<double[]>[]>(rows.size());
+	for (auto rho : rose)
+		matrix[rho] = std::make_unique<double[]>(calls.size());
+
+	for (auto rho : rose)
+		for (auto xi : calls)
+			matrix[rho][xi] = rows[rho][xi];
+}
+*/
 Matrix::Matrix(Matrix&& mtrx) : matrix{std::move(mtrx.matrix)},
 																nRows{mtrx.nRows},
 																mColumns{mtrx.mColumns}
@@ -146,9 +178,7 @@ Matrix Matrix::add(Matrix& m_2)
 	auto rose = makeIndexingSet(numRows);
 	auto calls = makeIndexingSet(numColumns);
 
-	auto entries = std::make_unique<std::unique_ptr<double[]>[]>(numRows);
-	for (auto rho : rose)
-		entries[rho] = std::make_unique<double[]>(numColumns);
+	auto entries = makeMatrix_unique(numRows, numColumns);
 
 	for (auto rho : rose)
 		for (auto xi : calls)
@@ -161,7 +191,7 @@ Matrix Matrix::add(Matrix& m_2)
 
 Matrix add(Matrix& m_1, Matrix& m_2)
 {
-	return m_1.add(m_2);
+	return std::move(m_1.add(m_2));
 }
 
 bool canSubtract(Matrix& m_1, Matrix& m_2)
@@ -179,9 +209,7 @@ Matrix Matrix::subtract(Matrix& m_2)
 	auto rose = makeIndexingSet(numRows);
 	auto calls = makeIndexingSet(numColumns);
 
-	auto entries = std::make_unique<std::unique_ptr<double[]>[]>(numRows);
-	for (auto rho : rose)
-		entries[rho] = std::make_unique<double[]>(numColumns);
+	auto entries = makeMatrix_unique(numRows, numColumns);
 
 	for (auto rho : rose)
 		for (auto xi : calls)
@@ -194,7 +222,7 @@ Matrix Matrix::subtract(Matrix& m_2)
 
 Matrix subtract(Matrix& m_1, Matrix& m_2)
 {
-	return m_1.subtract(m_2);
+	return std::move(m_1.subtract(m_2));
 }
 
 bool canMultiply(Matrix& m_1, Matrix& m_2)
@@ -223,9 +251,7 @@ Matrix Matrix::multiply(Matrix& mp)
 	auto columnsNP = makeIndexingSet(numColumnsMP);
 	auto columnsNM = makeIndexingSet(numColumnsNM);
 
-	auto entries = std::make_unique<std::unique_ptr<double[]>[]>(numRowsNM);
-	for (auto row : rowsNP)
-		entries[row] = std::make_unique<double[]>(numColumnsMP);
+	auto entries = makeMatrix_unique(rowsNP.size(), columnsNP.size());
 
 	for (auto i : rowsNP)
 		for (auto j : columnsNP)
@@ -239,7 +265,7 @@ Matrix Matrix::multiply(Matrix& mp)
 
 Matrix multiply(Matrix& nm, Matrix& mp)
 {
-	return nm.multiply(mp);
+	return std::move(nm.multiply(mp));
 }
 
 bool isInvertible(Matrix& nm)
@@ -267,10 +293,9 @@ Matrix Matrix::inverse()
 	int numRows = this->getNumRows();
 	int numColumns = this->getNumColumns();
 
-	auto entries = std::make_unique<std::unique_ptr<double[]>[]>(numRows);//, std::make_unique<double[]>(mColumns));
-	//std::unique_ptr<std::unique_ptr<double[]>[]> entries(numRows, std::unique_ptr<double[]>(numColumns));
+	auto entries = makeMatrix_unique(numRows, numColumns);
 
-	Matrix m(numRows, numColumns);
+	Matrix m(numRows, numColumns, std::move(entries));
 
 	return std::move(m);
 }

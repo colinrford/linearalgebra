@@ -7,6 +7,7 @@
 #include <exception>
 #include <limits>
 #include <memory>
+#include <vector>
 
 struct VectorException : public std::exception {
    const char* nonPos () const throw () {

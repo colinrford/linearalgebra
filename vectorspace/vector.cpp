@@ -1,6 +1,5 @@
 
 #include "vector.h"
-using std::cout;
 
 Vector::Vector(int dim)
 {
@@ -8,7 +7,7 @@ Vector::Vector(int dim)
     if (dim <= 0)
       throw VectorException();
   } catch (VectorException& e) {
-      cout << "Error! :0( " << e.nonPos() << std::endl;
+      std::cout << "Error! :0( " << e.nonPos() << std::endl;
   }
   dimension = dim;
   arrow = std::make_unique<double[]>(dimension);
@@ -29,7 +28,7 @@ Vector::Vector(int dim, std::unique_ptr<double[]> elem) : arrow(std::move(elem))
     if (dim <= 0)
       throw VectorException();
   } catch (VectorException& e) {
-    cout << "Error! :0( " << e.nonPos() << std::endl;
+    std::cout << "Error! :0( " << e.nonPos() << std::endl;
   }
 
   dimension = dim;
@@ -47,7 +46,6 @@ Vector& Vector::operator=(Vector&& v)
      return *this;
 }
 
-// expected return type is the type of the elements (e.g. double)
 auto Vector::operator[](int index) -> decltype(arrow[index])
 {
   if (index >= this->dimension)
@@ -123,7 +121,7 @@ Vector Vector::cross(Vector& v2)
     throw VectorException();
   }
 
-  std::unique_ptr<double[]> elem = std::make_unique<double[]>(d);
+  auto elem = std::make_unique<double[]>(d);
   elem[0] = this->arrow[1] * v2.arrow[2] - this->arrow[2] * v2.arrow[1];
   elem[1] = -(this->arrow[0] * v2.arrow[2] - this->arrow[2] * v2.arrow[0]);
   elem[2] = this->arrow[0] * v2.arrow[1] - this->arrow[1] * v2.arrow[0];
@@ -151,7 +149,7 @@ Vector Vector::add(Vector& v2)
     //return NAN;
   }
 
-  std::unique_ptr<double[]> elem = std::make_unique<double[]>(d);
+  auto elem = std::make_unique<double[]>(d);
   for (int i = 0; i < d; i++)
     elem[i] = this->arrow[i] + v2.arrow[i];
 
@@ -174,7 +172,7 @@ Vector Vector::subtract(Vector& v2)
     //return NAN;
   }
 
-  std::unique_ptr<double[]> elem = std::make_unique<double[]>(d);
+  auto elem = std::make_unique<double[]>(d);
   for (int i = 0; i < d; i++)
     elem[i] = this->arrow[i] - v2.arrow[i];
 
@@ -193,7 +191,7 @@ Vector subtract(Vector& v1, Vector& v2)
 Vector Vector::scalar(double s)
 {
   int d = this->dimension;
-  std::unique_ptr<double[]> elem = std::move(this->arrow);
+  auto elem = std::move(this->arrow);
   for (int i = 0; i < d; i++)
   {
     elem[i] = s * elem[i];
