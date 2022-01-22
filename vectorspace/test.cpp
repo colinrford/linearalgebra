@@ -2,7 +2,6 @@
 #include <numeric>
 #include <sstream>
 #include <string>
-#include <vector>
 #include "vector.cpp"
 
 std::vector<std::string> getVectorInput()
@@ -21,7 +20,7 @@ std::vector<std::string> getVectorInput()
     return components;
 }
 
-Vector createVectorFrom(std::vector<std::string> components)
+linalg::Vector createVectorFrom(std::vector<std::string> components)
 {
   std::unique_ptr<double[]> arrow = std::make_unique<double[]>(components.size());
   std::list<int> ell(components.size());
@@ -30,7 +29,7 @@ Vector createVectorFrom(std::vector<std::string> components)
   {
     arrow[i] = std::stod(components[i]);
   }
-  Vector vec(components.size(), std::move(arrow));
+  linalg::Vector vec(components.size(), std::move(arrow));
   return std::move(vec);
 }
 
@@ -38,13 +37,13 @@ int main()
 {
   int dim;
   bool awaitingInput = true;
-  std::vector<Vector> vectors;
+  std::vector<linalg::Vector> vectors;
 
   while (awaitingInput)
   {
     std::cout << "Adding vectors to list..." << std::endl;
     auto components = getVectorInput();
-    Vector v = std::move(createVectorFrom(components));
+    linalg::Vector v = std::move(createVectorFrom(components));
     vectors.push_back(std::move(v));
 
     std::cout << "Do you want to add more? y/n ";

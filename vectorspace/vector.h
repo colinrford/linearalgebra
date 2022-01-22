@@ -1,13 +1,13 @@
 
-#include <cstdlib>
 #include <cmath>
-#include <cctype>
-#include <complex>
 #include <iostream>
 #include <exception>
 #include <limits>
 #include <memory>
 #include <vector>
+
+namespace linalg
+{
 
 struct VectorException : public std::exception {
    const char* nonPos () const throw () {
@@ -78,4 +78,6 @@ Vector operator*(double, Vector&);
 Vector operator*(Vector&, double);
 Vector operator/(Vector&, double);
 bool operator==(Vector&, Vector&);
-bool compare(double a, double b);
+bool compare(double, double);
+
+}

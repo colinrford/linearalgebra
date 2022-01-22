@@ -1,3 +1,4 @@
+
 #include "matrix.cpp"
 
 int main()
@@ -11,8 +12,8 @@ int main()
 
 	try {
 		if ((numRows <= 0) || (numColumns <= 0))
-			throw MatrixException();
-	} catch (MatrixException& e) {
+			throw linalg::MatrixException();
+	} catch (linalg::MatrixException& e) {
 		std::cout << "Error! :0( " << e.nonPos() << std::endl;
 		return 0;
 	}
@@ -29,7 +30,7 @@ int main()
 	}
 
 	std::cout << "\nMatrix m_1 = " << std::endl;
-	Matrix m1(numRows, numColumns, std::move(entries));
+	linalg::Matrix m1(numRows, numColumns, std::move(entries));
 	m1.print();
 
 	auto entries2 = std::make_unique<std::unique_ptr<double[]>[]>(numRows);//, std::make_unique<double[]>(mColumns));
@@ -44,15 +45,15 @@ int main()
 	}
 
 	std::cout << "\nMatrix m_2 = " << std::endl;
-	Matrix m2(numRows, numColumns, std::move(entries2));
+	linalg::Matrix m2(numRows, numColumns, std::move(entries2));
 	m2.print();
 
 	std::cout << "\nThe sum of these two matrices is the matrix: " << std::endl;
-	Matrix m3 = m1 + m2;
+	linalg::Matrix m3 = m1 + m2;
 	m3.print();
 
 	std::cout << "\nThe difference of these two matrices is the matrix: " << std::endl;
-	Matrix m4 = m1 - m2;
+	linalg::Matrix m4 = m1 - m2;
 	m4.print();
 
 	bool tru = m1.isSquare();
@@ -62,7 +63,7 @@ int main()
 		std::cout << "\nNot At All Square (NAAS) ! ! !" << std::endl;
 
 	std::cout <<"\nThe product of m1 and m2 is the matrix: " << std::endl;
-	Matrix m5 = m1 * m2;
+	linalg::Matrix m5 = m1 * m2;
 	m5.print();
 
 	std::cout << "Hope it worked :0)\nPress return to end program.";

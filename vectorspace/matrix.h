@@ -1,7 +1,10 @@
 
 #include "vector.h"
-#include <tuple>
+#include <optional>
+#include <utility>
 
+namespace linalg
+{
 
 // pls compile w at least c++11
 
@@ -41,9 +44,13 @@ class Matrix {
 
 		Matrix(int n, int m, std::unique_ptr<std::unique_ptr<double[]>[]> mtrx);
 
+		Matrix(int n);
+
+		Matrix(int n, std::unique_ptr<std::unique_ptr<double[]>[]> mtrx);
+
 		Matrix(std::vector<std::vector<double> > mtrx);
 
-		Matrix(std::vector<Vector> rows);
+		Matrix(std::vector<linalg::Vector> rows);
 
 		Matrix(Matrix&& mtrx);
 
@@ -75,6 +82,12 @@ class Matrix {
 
 		Matrix transpose();
 
+		std::optional<std::pair<Matrix, int>> croutLU();
+
+		double croutLUDet();
+
+		//Matrix doolittleLU(int d, double* S, double* D)
+
 		double determinant();
 
 		double det();
@@ -97,3 +110,5 @@ Matrix operator*(Matrix&, double);
 Matrix operator/(Matrix&, double);
 bool operator==(Matrix&, Matrix&);
 void print(const Matrix&);
+
+}

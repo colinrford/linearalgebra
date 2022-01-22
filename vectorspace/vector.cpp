@@ -1,6 +1,9 @@
 
 #include "vector.h"
 
+namespace linalg
+{
+
 Vector::Vector(int dim)
 {
   try {
@@ -298,4 +301,6 @@ bool compare(double a, double b)
     return true;
   else
     return false;
+}
+
 }
