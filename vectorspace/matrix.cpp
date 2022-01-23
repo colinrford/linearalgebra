@@ -122,6 +122,35 @@ Matrix::Matrix(std::vector<Vector> rows)
 			matrix[rho][xi] = rows[rho][xi];
 }
 
+Matrix::Matrix(std::vector<double> diag)
+{
+	int n = diag.size();
+	auto square = makeIndexingSet(n);
+
+	matrix = makeMatrix_unique(n, n);
+
+	for (auto rho : square)
+		for (auto xi : square)
+			if (rho != xi)
+				matrix[rho][xi] = 0.0;
+			else
+				matrix[rho][xi] = diag[rho];
+}
+
+Matrix::Matrix(Vector diag)
+{
+	int n = diag.getDimension();
+	auto square = makeIndexingSet(n);
+
+	matrix = makeMatrix_unique(n, n);
+
+	for (auto rho : square)
+		for (auto xi : square)
+			if (rho != xi)
+				matrix[rho][xi] = 0.0;
+			else
+				matrix[rho][xi] = diag[rho];
+}
 
 Matrix::Matrix(Matrix&& mtrx) : matrix{std::move(mtrx.matrix)},
 																nRows{mtrx.nRows},
@@ -336,6 +365,16 @@ Matrix Matrix::inverse()
 	return std::move(m);
 }
 
+void gaussje()
+{
+
+}
+
+void gaussjInv()
+{
+
+}
+
 // TODO: implement
 double Matrix::determinant()
 {
@@ -414,7 +453,7 @@ std::optional<std::pair<Matrix, int>> Matrix::croutLU()
 double Matrix::croutLUDet()
 {
 	std::pair<Matrix, int> pairity = this->croutLU().value();
-	if (pairity.second > 0)
+	if (pairity.second == 1 || pairity.second == -1)
 	{
 		double dtrmnnt = pairity.second;
 		auto diag = makeIndexingSet(this->nRows);
@@ -428,121 +467,82 @@ double Matrix::croutLUDet()
 		return 0.0;
 }
 
-/*
-// from:	sci.utah.edu/~wallstedt
-Matrix Matrix::doolittleLU(int d, double* S, double* D)
+void Matrix::croutLUSolveSystem()
 {
-
-	for (int k = 0; k < d; ++k)
+	int i, j, m = b.ncols();
+	int n = this->getNumRows();
+	if (b.nrows() != n || x.nrows() != n || b.ncols() != x.ncols())
+		throw("LUdcmp::solve bad sizes");
+	Vector implicitScalingPerRow(n);
+	for (j = 0; j < m; j++)
 	{
-    for (int j = k ; j < d; ++j)
-		{
-      double sum = 0.0;
-      for(int p = 0; p < k; ++p)
-				sum += D[k * d + p] * D[p * d + j];
-      D[k * d + j] = (S[k * d + j] - sum);
-    }
-    for (int i = k + 1; i < d; ++i)
-		{
-    	double sum = 0.0;
-    	for(int p = 0; p < k; ++p)
-				sum += D[i * d + p] * D[p * d + k];
-    	D[i * d + k] = (S[i * d + k] - sum) / D[k * d + k];
-    }
+		for (i = 0; i < n; i++)
+			xx[i] = b[i][j];
+		solve(xx, xx);
+		for (i = 0; i < n; i++)
+			x[i][j] = xx[i];
 	}
 }
-*/
 
-// LUP functions below based on C  code from Wikipedia page /wiki/LU_decomposition#Algorithms
-
-/* INPUT: A - array of pointers to rows of a square matrix having dimension N
- *        Tol - small tolerance number to detect failure when the matrix is near degenerate
- * OUTPUT: Matrix A is changed, it contains a copy of both matrices L-E and U as A=(L-E)+U such that P*A=L*U.
- *        The permutation matrix is not stored as a matrix, but in an integer unique_ptr P of size N+1
- *        containing column indexes where the permutation matrix has "1". The last element P[N]=S+N,
- *        where S is the number of row exchanges needed for determinant computation, det(P)=(-1)^S
- */
-
-/*
-int LUPDecompose(double **A, int N, double Tol, int *P)
+Matrix Matrix::croutLUInv()
 {
+	std::pair<Matrix, int> pairity = this->croutLU().value();
+	int n = pairity.first.getNumRows();
+	auto square = makeIndexingSet(n);
+	auto ainv = makeMatrix_unique(n, n);
 
-    int i, j, k, imax;
-    double maxA, *ptr, absA;
-
-    for (i = 0; i <= N; i++)
-    {
-        P[i] = i; // Unit permutation matrix, P[N] initialized with N
-    }
-
-    for (i = 0; i < N; i++)
-    {
-        maxA = 0.0;
-        imax = i;
-
-        for (k = i; k < N; k++)
-        {
-           if ((absA = fabs(A[k][i])) > maxA)
-           {
-           		maxA = absA;
-           		imax = k;
-           }
-         }
-
-        if (maxA < Tol)
-        {
-					return 0; // failure, matrix is degenerate
-				}
-
-        if (imax != i)
-        {
-            // pivoting P
-            j = P[i];
-            P[i] = P[imax];
-            P[imax] = j;
-
-            // pivoting rows of A
-            ptr = A[i];
-            A[i] = A[imax];
-            A[imax] = ptr;
-
-            // counting pivots starting from N (for determinant)
-            P[N]++;
-        }
-
-        for (j = i + 1; j < N; j++)
-        {
-        	A[j][i] /= A[i][i];
-
-          for (k = i + 1; k < N; k++)
-          {
-          	A[j][k] -= A[j][i] * A[i][k];
-          }
-        }
-    }
-
-    return 1;  // decomposition done
+  for (int i : square)
+	{
+		for (int j : square)
+			ainv[i][j] = 0.0;
+    ainv[i][i] = 1.0;
+  }
+  croutLUSolveSystem(ainv, ainv);
 }
-*/
 
-/* INPUT: A,P filled in LUPDecompose; N - dimension.
- * OUTPUT: Function returns the determinant of the initial matrix
- */
-/*
-double LUPDeterminant(Matrix& A, int* P, int N)
+// adapted from:	sci.utah.edu/~wallstedt
+// main diagonal of L is composed with 1s
+Matrix Matrix::doolittleLU()
 {
-
-	double det = A[0][0];
-
-  for (int i = 1; i < N; i++)
-  	det *= A[i][i];
-
-  if ((P[N] - N) % 2 == 0)
-    return det;
-  else
-    return -det;
+	int n = this->getNumRows();
+	auto square = makeIndexingSet(n);
+	auto lu = makeMatrix_unique(n, n);
+	for (int k : square)
+	{
+		auto subsq = makeIndexingSet(k);
+		auto subsqc = makeIndexingSet(n - k);
+		auto subsqcpo = makeIndexingSet(n - k + 1);
+    for (int j : subsqc)//(int j = k; j < n; ++j)
+		{
+      double sum = 0.0;
+      for (int p : subsq)
+				sum += lu[k][p] * lu[p][j];
+      lu[k][j] = (this->matrix[k][j] - sum);
+    }
+    for (int i : subsqcpo)//(int i = k + 1; i < n; ++i)
+		{
+    	double sum = 0.0;
+    	for (int p : subsq)
+				sum += lu[i][p] * lu[p][k];
+    	lu[i][k] = (this->matrix[i][k] - sum) / lu[k][k];
+    }
+	}
+	Matrix lu_decomposition(n, std::move(lu));
+	return lu_decomposition;
 }
-*/
+//incomplete possibly may need permutation info too?
+double Matrix::doolittleLUDet()
+{
+	Matrix lu_decomposition = this->doolittleLU();
+
+	double dtrmnnt = 0.0;
+	auto diag = makeIndexingSet(this->nRows);
+
+	for (auto indx : diag)
+		dtrmnnt *= lu_decomposition[indx][indx];
+
+	return dtrmnnt;
+}
 
 bool Matrix::isSquare()
 {
@@ -593,6 +593,60 @@ Matrix operator*(Matrix& m_1, Matrix& m_2)
 	return std::move(multiply(m_1, m_2));
 }
 
+Matrix operator*(Matrix& m, double d)
+{
+	int numRows = m.getNumRows();
+	int numColumns = m.getNumColumns();
+	auto rose = makeIndexingSet(numRows);
+	auto calls = makeIndexingSet(numColumns);
+
+	auto md = makeMatrix_unique(numRows, numColumns);
+
+	for (auto rho : rose)
+		for (auto xi : calls)
+			md[rho][xi] = m[rho][xi] * d;
+
+	Matrix mtd(numRows, numColumns, std::move(md));
+
+	return std::move(mtd);
+}
+
+Matrix operator*(double d, Matrix& m)
+{
+	int numRows = m.getNumRows();
+	int numColumns = m.getNumColumns();
+	auto rose = makeIndexingSet(numRows);
+	auto calls = makeIndexingSet(numColumns);
+
+	auto md = makeMatrix_unique(numRows, numColumns);
+
+	for (auto rho : rose)
+		for (auto xi : calls)
+			md[rho][xi] = d * m[rho][xi];
+
+	Matrix mtd(numRows, numColumns, std::move(md));
+
+	return std::move(mtd);
+}
+
+Vector operator*(Matrix& A, Vector& x)
+{
+	int numRows = A.getNumRows();
+	int numColumns = A.getNumColumns();
+	assert(numColumns == x.getDimension());
+	//if (numColumns != x.getDimension())
+	//auto indices = makeIndexingSet(dim);
+	auto rose = makeIndexingSet(numRows);
+	auto calls = makeIndexingSet(numColumns);
+	Vector b(numRows);
+
+	for (auto rho : rose)
+		for (auto xi : calls)
+			b[rho] += A[rho][xi] * x[xi];
+
+	return std::move(b);
+}
+
 bool operator==(Matrix& m_1, Matrix& m_2)
 {
   return m_1.equals(m_2);
@@ -600,7 +654,6 @@ bool operator==(Matrix& m_1, Matrix& m_2)
 
 void Matrix::print()
 {
-
 	auto rowindices = makeIndexingSet(this->getNumRows());
 	auto colindices = makeIndexingSet(this->getNumColumns());
 

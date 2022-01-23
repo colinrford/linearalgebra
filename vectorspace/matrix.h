@@ -48,6 +48,8 @@ class Matrix {
 
 		Matrix(int n, std::unique_ptr<std::unique_ptr<double[]>[]> mtrx);
 
+		Matrix(Vector diag);
+
 		Matrix(std::vector<std::vector<double> > mtrx);
 
 		Matrix(std::vector<linalg::Vector> rows);
@@ -84,9 +86,15 @@ class Matrix {
 
 		std::optional<std::pair<Matrix, int>> croutLU();
 
+		void croutLUSolveSystem();
+
 		double croutLUDet();
 
-		//Matrix doolittleLU(int d, double* S, double* D)
+		Matrix croutLUInv();
+
+		Matrix doolittleLU();
+
+		double doolittleLUDet();
 
 		double determinant();
 
@@ -107,6 +115,7 @@ Matrix operator-(Matrix&, Matrix&);
 Matrix operator*(Matrix&, Matrix&);
 Matrix operator*(double, Matrix&);
 Matrix operator*(Matrix&, double);
+Vector operator*(Matrix&, Vector);
 Matrix operator/(Matrix&, double);
 bool operator==(Matrix&, Matrix&);
 void print(const Matrix&);

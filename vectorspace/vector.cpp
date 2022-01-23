@@ -135,7 +135,7 @@ Vector Vector::cross(Vector& v2)
 
   Vector n(d, std::move(elem));
 
-  return n;
+  return std::move(n);
 }
 
 Vector cross(Vector& v1, Vector& v2)

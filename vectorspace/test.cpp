@@ -26,9 +26,7 @@ linalg::Vector createVectorFrom(std::vector<std::string> components)
   std::list<int> ell(components.size());
   std::iota(ell.begin(), ell.end(), 0);
   for (auto i : ell)
-  {
     arrow[i] = std::stod(components[i]);
-  }
   linalg::Vector vec(components.size(), std::move(arrow));
   return std::move(vec);
 }
