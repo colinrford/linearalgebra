@@ -6,6 +6,7 @@
 namespace linalg
 {
 
+struct LUdcmp;
 // pls compile w at least c++11
 
 struct MatrixException : public std::exception {
@@ -29,6 +30,13 @@ struct MatrixException : public std::exception {
 						Is its determinant nonzero?";
   }
 };
+/*
+struct LUdcmp
+{
+	Matrix lu_decomp;
+	Vector permutations;
+	int parity;
+};*/
 
 class Matrix {
 
@@ -49,6 +57,8 @@ class Matrix {
 		Matrix(int n, std::unique_ptr<std::unique_ptr<double[]>[]> mtrx);
 
 		Matrix(Vector diag);
+
+		Matrix(std::vector<double> diag);
 
 		Matrix(std::vector<std::vector<double> > mtrx);
 
@@ -84,9 +94,11 @@ class Matrix {
 
 		Matrix transpose();
 
-		std::optional<std::pair<Matrix, int>> croutLU();
+		std::optional<linalg::LUdcmp> croutLU();
 
-		void croutLUSolveSystem();
+		Vector croutLUSolveSystem(Vector&);
+
+		Matrix croutLUSolveMatrixSystem(Matrix&);
 
 		double croutLUDet();
 
@@ -108,6 +120,13 @@ class Matrix {
 
 		~Matrix() = default;
 
+};
+
+struct LUdcmp
+{
+	Matrix lu_decomp;
+	Vector permutations;
+	int parity;
 };
 
 Matrix operator+(Matrix&, Matrix&);

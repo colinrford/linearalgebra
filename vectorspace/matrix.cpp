@@ -13,6 +13,18 @@ auto makeIndexingSet = [](int n) -> std::list<int> {
 	return ell;
 };
 
+auto makeIndexingSetStartingAt = [](int index, int size) -> std::list<int> {
+	std::list<int> ell(size);
+	std::iota(ell.begin(), ell.end(), index);
+	return ell;
+};
+
+auto makeIndexingSetReverse = [](int n) -> std::list<int> {
+	std::list<int> ell(n);
+	std::iota(ell.end(), ell.begin(), n);
+	return ell;
+};
+
 auto makeMatrix_unique = [](int numRows, int numColumns) {
 	auto mtrx = std::make_unique<std::unique_ptr<double[]>[]>(numRows);
 	auto rose = makeIndexingSet(numRows);
@@ -333,6 +345,7 @@ Matrix multiply(Matrix& nm, Matrix& mp)
 	return std::move(nm.multiply(mp));
 }
 
+// incomplete
 bool isInvertible(Matrix& nm)
 {
 	if (!nm.isSquare())
@@ -346,7 +359,7 @@ bool isInvertible(Matrix& nm)
 	return true;
 }
 
-// TODO: implement
+// TODO: implement // incomplete
 Matrix Matrix::inverse()
 {
 	if (!isInvertible(*this))
@@ -365,14 +378,22 @@ Matrix Matrix::inverse()
 	return std::move(m);
 }
 
+// incomplete
 void gaussje()
 {
 
 }
 
+// incomplete
 void gaussjInv()
 {
 
+}
+
+// incomplete
+Matrix Matrix::transpose()
+{
+	return std::move(Matrix(this->getNumRows(), this->getNumColumns()));
 }
 
 // TODO: implement
@@ -389,12 +410,13 @@ double Matrix::det()
 // from Numerical Recipes, 3rd Ed – A is square
 // std::optional w Matrix, optionally singular?
 // Crout uses unit diagonals for the upper triangle
-std::optional<std::pair<Matrix, int>> Matrix::croutLU()
+std::optional<LUdcmp> Matrix::croutLU()
 {
 	int imax = 0, parity = 1;
 	int n = this->getNumRows();
 	double big, temp;
 	auto square = makeIndexingSet(n);
+	Vector perms(n);
 	Vector implicitScalingPerRow(n);
 	auto lu = makeMatrix_unique(n, n);
 
@@ -417,7 +439,8 @@ std::optional<std::pair<Matrix, int>> Matrix::croutLU()
 	for (auto k : square)
 	{
 		big = 0.0;
-		for (int i = k; i < n; i++)
+		auto someIndices = makeIndexingSetStartingAt(k, n - k);
+		for (auto i : someIndices)//(int i = k; i < n; i++)
 		{
 			temp = implicitScalingPerRow[i] * abs(lu[i][k]);
 			if (temp > big)
@@ -437,29 +460,36 @@ std::optional<std::pair<Matrix, int>> Matrix::croutLU()
 			parity = -parity;
 			implicitScalingPerRow[imax] = implicitScalingPerRow[k];
 		}
+		perms[k] = imax;
 		if (compare(lu[k][k], 0.0)) // if 0, matrix is singular
 			lu[k][k] = std::numeric_limits<double>::epsilon();
-		for (int i = k + 1; i < n; i++)
+		someIndices = makeIndexingSetStartingAt(k + 1, n - (k + 1));
+		for (auto i : someIndices) // (int i = k + 1; i < n; i++)
 		{
 			temp = lu[i][k] /= lu[k][k];
-			for (int j = k + 1; j < n; j++)
+			for (auto j : someIndices) // (int j = k + 1; j < n; j++)
 				lu[i][j] -= temp * lu[k][j];
 		}
 	}
 	Matrix lu_decomposition = Matrix(n, std::move(lu));
-	return std::make_pair(std::move(lu_decomposition), parity);
+	LUdcmp lu_decomp(std::move(lu_decomposition), std::move(perms), parity);
+	return std::move(lu_decomp);
 }
 
 double Matrix::croutLUDet()
 {
-	std::pair<Matrix, int> pairity = this->croutLU().value();
-	if (pairity.second == 1 || pairity.second == -1)
+	auto lu_decomp = this->croutLU();
+	if (!lu_decomp.has_value())
+		return 0.0;
+
+	LUdcmp decomp = std::move(lu_decomp.value());
+	if (decomp.parity == 1 || decomp.parity == -1)
 	{
-		double dtrmnnt = pairity.second;
+		double dtrmnnt = decomp.parity;
 		auto diag = makeIndexingSet(this->nRows);
 
 		for (auto indx : diag)
-			dtrmnnt *= pairity.first[indx][indx];
+			dtrmnnt *= decomp.lu_decomp[indx][indx];
 
 		return dtrmnnt;
 	}
@@ -467,37 +497,103 @@ double Matrix::croutLUDet()
 		return 0.0;
 }
 
-void Matrix::croutLUSolveSystem()
+Vector Matrix::croutLUSolveSystem(Vector& b)
 {
-	int i, j, m = b.ncols();
-	int n = this->getNumRows();
-	if (b.nrows() != n || x.nrows() != n || b.ncols() != x.ncols())
-		throw("LUdcmp::solve bad sizes");
-	Vector implicitScalingPerRow(n);
-	for (j = 0; j < m; j++)
+	auto lu_decomp = this->croutLU();
+	if (!lu_decomp.has_value()) // std::optional instead?
+		return std::move(Vector(b.getDimension()));
+	LUdcmp decomp = std::move(lu_decomp.value());
+
+	int ii = 0, ip;
+	int n = b.getDimension();
+	double sum = 0.0;
+	Vector x(n);
+	Matrix lu = std::move(decomp.lu_decomp);
+	auto vecIndices = makeIndexingSet(n);
+
+	for (auto rho : vecIndices)
+		x[rho] = b[rho];
+
+	for (auto i : vecIndices)
 	{
-		for (i = 0; i < n; i++)
-			xx[i] = b[i][j];
-		solve(xx, xx);
-		for (i = 0; i < n; i++)
-			x[i][j] = xx[i];
+		ip = decomp.permutations[i];
+		sum = x[ip];
+		x[ip] = x[i];
+		if (ii != 0)
+		{
+			auto someIndices = makeIndexingSetStartingAt(ii - 1, i);
+			for (auto j : someIndices) //(j = ii - 1; j < i; j++)
+				sum -= lu.matrix[i][j] * x[j];
+		}
+		else if (!compare(sum, 0.0))
+    	ii = i + 1;
+		x[i] = sum;
 	}
+
+	for (int i = n - 1; i >= 0; i--)
+	{
+		sum = x[i];
+		auto someIndices = makeIndexingSetStartingAt(i + 1, n - (i + 1));
+		for (auto j : someIndices) //(j = i + 1; j < n; j++)
+			sum -= lu.matrix[i][j] * x[j];
+		x[i] = sum / lu.matrix[i][i];
+	}
+
+	return std::move(x);
+}
+
+Matrix Matrix::croutLUSolveMatrixSystem(Matrix& B)
+{
+	int numRowsA = this->getNumRows();
+	int numColumnsA = this->getNumColumns();
+	int numRowsB = B.getNumRows();
+	int numColumnsB = B.getNumColumns();
+
+	if (numRowsA != numRowsB || numColumnsA != numColumnsB)
+	{ // std::optional instead?
+		//throw("LUdcmp::solve bad sizes");
+		return std::move(Matrix(numRowsA, numColumnsA));
+	}
+
+	auto rose = makeIndexingSet(numRowsA);
+	auto calls = makeIndexingSet(numColumnsA);
+
+	Matrix X(numRowsA, numColumnsA);
+	Vector b(numRowsA);
+	Vector xx(numRowsA);
+	for (auto j : calls)
+	{
+		for (auto i : rose)
+			b[i] = B[i][j];
+		xx = std::move(croutLUSolveSystem(b));
+		for (auto i : rose)
+			X[i][j] = xx[i];
+	}
+
+	return std::move(X);
 }
 
 Matrix Matrix::croutLUInv()
 {
-	std::pair<Matrix, int> pairity = this->croutLU().value();
-	int n = pairity.first.getNumRows();
+	auto lu_decomp = this->croutLU();
+	if (!lu_decomp.has_value()) // std::optional instead?
+		return std::move(Matrix(this->getNumRows(), this->getNumColumns()));
+
+	LUdcmp decomp = std::move(lu_decomp.value());
+	int n = decomp.lu_decomp.getNumRows();
 	auto square = makeIndexingSet(n);
-	auto ainv = makeMatrix_unique(n, n);
+	auto ainv_entries = makeMatrix_unique(n, n);
 
   for (int i : square)
-	{
 		for (int j : square)
-			ainv[i][j] = 0.0;
-    ainv[i][i] = 1.0;
-  }
-  croutLUSolveSystem(ainv, ainv);
+			if (i != j)
+				ainv_entries[i][j] = 0.0;
+			else
+				ainv_entries[i][j] = 1.0;
+
+	Matrix ainv(n, std::move(ainv_entries));
+  Matrix A_inv = ainv.croutLUSolveMatrixSystem(ainv);
+	return std::move(A_inv);
 }
 
 // adapted from:	sci.utah.edu/~wallstedt
@@ -530,6 +626,7 @@ Matrix Matrix::doolittleLU()
 	Matrix lu_decomposition(n, std::move(lu));
 	return lu_decomposition;
 }
+
 //incomplete possibly may need permutation info too?
 double Matrix::doolittleLUDet()
 {
@@ -557,18 +654,16 @@ bool Matrix::isSquare()
 
 bool Matrix::equals(Matrix& m_2)
 {
-	int numRowsM_1 = this->getNumRows();
-	int numColumnsM_1 = this->getNumColumns();
-	int numRowsM_2 = m_2.getNumRows();
-	int numColumnsM_2 = m_2.getNumColumns();
+	int numRows_M_1 = this->getNumRows();
+	int numColumns_M_1 = this->getNumColumns();
+	int numRows_M_2 = m_2.getNumRows();
+	int numColumns_M_2 = m_2.getNumColumns();
 
-  if ((numRowsM_1 != numRowsM_2) || (numColumnsM_1 != numColumnsM_2))
-  {
+  if ((numRows_M_1 != numRows_M_2) || (numColumns_M_1 != numColumns_M_2))
     return false;
-  }
 
-	auto rose = makeIndexingSet(numRowsM_1);
-	auto calls = makeIndexingSet(numColumnsM_1);
+	auto rose = makeIndexingSet(numRows_M_1);
+	auto calls = makeIndexingSet(numColumns_M_1);
 
   for (auto rho : rose)
   	for (auto xi : calls)

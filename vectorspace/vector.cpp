@@ -226,17 +226,11 @@ bool Vector::equals(Vector& v2)
   int d = this->dimension;
 
   if (d != v2.dimension)
-  {
     return false;
-  }
 
   for (int i = 0; i < d; i++)
-  {
     if (this->arrow[i] != v2.arrow[i])
-    {
       return false;
-    }
-  }
 
   return true;
 }
@@ -244,25 +238,25 @@ bool Vector::equals(Vector& v2)
 Vector operator+(Vector& v1, Vector& v2)
 {
   Vector v3 = add(v1, v2);
-  return v3;
+  return std::move(v3);
 }
 
 Vector operator-(Vector& v1, Vector& v2)
 {
   Vector v3 = subtract(v1, v2);
-  return v3;
+  return std::move(v3);
 }
 
 Vector operator*(double d, Vector& v)
 {
   Vector v3 = v.scalar(d);
-  return v3;
+  return std::move(v3);
 }
 
 Vector operator*(Vector& v, double d)
 {
   Vector u = v.scalar(d);
-  return u;
+  return std::move(u);
 }
 
 Vector operator/(Vector& v, double d)
@@ -270,7 +264,7 @@ Vector operator/(Vector& v, double d)
   double d_inv = 1 / d;
 
   Vector u = v.scalar(d_inv);
-  return u;
+  return std::move(u);
 }
 
 bool operator==(Vector& v1, Vector& v2)
