@@ -1,14 +1,16 @@
 
 #include "vector.h"
-#include <optional>
+#include <cassert>
+#include <list>
+#include <numeric>
 #include <utility>
 
 namespace linalg
 {
 
 struct LUdcmp;
-// pls compile w at least c++11
 
+// also stale
 struct MatrixException : public std::exception {
 	const char* nonPos () const throw () {
   	return "The number of rows and columns of the matrix must be at least 1";
@@ -30,13 +32,7 @@ struct MatrixException : public std::exception {
 						Is its determinant nonzero?";
   }
 };
-/*
-struct LUdcmp
-{
-	Matrix lu_decomp;
-	Vector permutations;
-	int parity;
-};*/
+
 
 class Matrix {
 
@@ -44,6 +40,7 @@ class Matrix {
 
 		int nRows;
 		int mColumns;
+		std::optional<std::string> label;
 		std::unique_ptr<std::unique_ptr<double[]>[]> matrix;
 
 	public:
@@ -64,7 +61,7 @@ class Matrix {
 
 		Matrix(std::vector<linalg::Vector> rows);
 
-		Matrix(Matrix&& mtrx);
+		Matrix(Matrix&& mtrx) noexcept;
 
 		Matrix& operator=(Matrix&& mtrx);
 

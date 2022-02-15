@@ -22,7 +22,7 @@ std::vector<std::string> getVectorInput()
 
 linalg::Vector createVectorFrom(std::vector<std::string> components)
 {
-  std::unique_ptr<double[]> arrow = std::make_unique<double[]>(components.size());
+  auto arrow = std::make_unique<double[]>(components.size());
   std::list<int> ell(components.size());
   std::iota(ell.begin(), ell.end(), 0);
   for (auto i : ell)

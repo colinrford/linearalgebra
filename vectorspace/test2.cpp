@@ -1,5 +1,36 @@
 
 #include "matrix.cpp"
+#include <sstream>
+
+linalg::Vector createVectorFrom(std::vector<std::string> components)
+{
+  auto arrow = std::make_unique<double[]>(components.size());
+	auto ell = linalg::makeIndexingSet(components.size());
+
+  for (auto i : ell)
+    arrow[i] = std::stod(components[i]);
+  linalg::Vector vec(components.size(), std::move(arrow));
+  return std::move(vec);
+}
+/*
+void readCSVMatrixInput()
+{
+	std::string line;
+	while(std::getline(stream, line))
+	{
+		std::istringstream s(line);
+		std::string field;
+		while (getline(s, field,','))
+		{
+
+		}
+	}
+}*/
+
+linalg::Matrix createMatrixFrom(std::vector<linalg::Vector> rows)
+{
+	return std::move(linalg::Matrix(std::move(rows)));
+}
 
 int main()
 {

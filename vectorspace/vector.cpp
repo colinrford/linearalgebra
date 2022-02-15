@@ -37,9 +37,19 @@ Vector::Vector(int dim, std::unique_ptr<double[]> elem) : arrow(std::move(elem))
   dimension = dim;
 }
 
-Vector::Vector(Vector&& v) : arrow{std::move(v.arrow)}, dimension{v.dimension}
+Vector::Vector(std::vector<double> elem)
 {
-  v.dimension = 0;
+  int dim = elem.size();
+  dimension = dim;
+  arrow = std::make_unique<double[]>(dimension);
+  for (int i = 0; i < dimension; i++)
+    arrow[i] = elem[i];
+}
+
+Vector::Vector(Vector&& v) noexcept
+      : arrow{std::move(v.arrow)}, dimension{v.dimension}
+{
+  //v.dimension = 0;
 }
 
 Vector& Vector::operator=(Vector&& v)

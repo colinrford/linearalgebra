@@ -4,11 +4,13 @@
 #include <exception>
 #include <limits>
 #include <memory>
+#include <optional>
 #include <vector>
 
 namespace linalg
 {
 
+// stale
 struct VectorException : public std::exception {
    const char* nonPos () const throw () {
       return "The dimension of the vector must be at least 1";
@@ -27,6 +29,7 @@ class Vector {
 
     int dimension;
     std::unique_ptr<double[]> arrow;
+    std::optional<std::string> label;
 
   public:
 
@@ -34,7 +37,9 @@ class Vector {
 
     Vector(int dim, std::unique_ptr<double[]> elem);  // create a vector with elements elem and dimension dim
 
-    Vector(Vector&& v);
+    Vector(std::vector<double> elem);
+
+    Vector(Vector&& v) noexcept;
 
     Vector& operator=(Vector&& v);
 

@@ -1,37 +1,40 @@
 
 #include "matrix.h"
-#include <cassert>
-#include <list>
-#include <numeric>
 
 namespace linalg
 {
 
-auto makeIndexingSet = [](int n) -> std::list<int> {
+constexpr auto makeIndexingSet = [](int n) -> std::list<int> {
 	std::list<int> ell(n);
 	std::iota(ell.begin(), ell.end(), 0);
 	return ell;
 };
 
-auto makeIndexingSetStartingAt = [](int index, int size) -> std::list<int> {
+constexpr auto makeIndexingSetStartingAt = [](int index, int size) -> std::list<int> {
 	std::list<int> ell(size);
 	std::iota(ell.begin(), ell.end(), index);
 	return ell;
 };
 
-auto makeIndexingSetReverse = [](int n) -> std::list<int> {
+constexpr auto makeIndexingSetReverse = [](int n) -> std::list<int> {
 	std::list<int> ell(n);
 	std::iota(ell.end(), ell.begin(), n);
 	return ell;
 };
 
-auto makeMatrix_unique = [](int numRows, int numColumns) {
+constexpr auto makeMatrix_unique = [](int numRows, int numColumns) {
 	auto mtrx = std::make_unique<std::unique_ptr<double[]>[]>(numRows);
 	auto rose = makeIndexingSet(numRows);
 	for (auto rho : rose)
 		mtrx[rho] = std::make_unique<double[]>(numColumns);
 
 	return std::move(mtrx);
+};
+
+auto zeroVectorOfDim = [](int d) {
+	Vector v(d);
+	v[0] = 0;
+	return std::move(v);
 };
 
 // The basic constructor just creates an n x m identity matrix
@@ -164,11 +167,12 @@ Matrix::Matrix(Vector diag)
 				matrix[rho][xi] = diag[rho];
 }
 
-Matrix::Matrix(Matrix&& mtrx) : matrix{std::move(mtrx.matrix)},
-																nRows{mtrx.nRows},
-																mColumns{mtrx.mColumns}
+Matrix::Matrix(Matrix&& mtrx) noexcept
+			: matrix{std::move(mtrx.matrix)},
+				nRows{mtrx.nRows},
+				mColumns{mtrx.mColumns}
 {
-  mtrx.nRows = mtrx.mColumns = 0;
+  //mtrx.nRows = mtrx.mColumns = 0;
 }
 
 
@@ -393,7 +397,7 @@ void gaussjInv()
 // incomplete
 Matrix Matrix::transpose()
 {
-	return std::move(Matrix(this->getNumRows(), this->getNumColumns()));
+	return std::move(Matrix(this->getNumColumns(), this->getNumRows()));
 }
 
 // TODO: implement
@@ -560,14 +564,14 @@ Matrix Matrix::croutLUSolveMatrixSystem(Matrix& B)
 
 	Matrix X(numRowsA, numColumnsA);
 	Vector b(numRowsA);
-	Vector xx(numRowsA);
+	Vector x(numRowsA);
 	for (auto j : calls)
 	{
 		for (auto i : rose)
 			b[i] = B[i][j];
-		xx = std::move(croutLUSolveSystem(b));
+		x = std::move(croutLUSolveSystem(b));
 		for (auto i : rose)
-			X[i][j] = xx[i];
+			X[i][j] = x[i];
 	}
 
 	return std::move(X);
@@ -733,7 +737,7 @@ Vector operator*(Matrix& A, Vector& x)
 	//auto indices = makeIndexingSet(dim);
 	auto rose = makeIndexingSet(numRows);
 	auto calls = makeIndexingSet(numColumns);
-	Vector b(numRows);
+	Vector b = zeroVectorOfDim(numRows);
 
 	for (auto rho : rose)
 		for (auto xi : calls)
