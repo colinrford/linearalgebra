@@ -68,7 +68,11 @@ namespace linalg
 		std::optional<std::variant<Vector, Matrix>>
 		getCSVDataFrom(const std::string feyell)
 		{
-			csv::CSVReader reader(feyell);
+			csv::CSVFormat format;
+			format.header_row(0)
+						.trim({' ', '\t'});
+						//.variable_columns(true);
+			csv::CSVReader reader(feyell, format);
 			auto col_names = reader.get_col_names();
 			auto indcs = makeIndexingSet(dataTypeNames.size());
 			int type_of_data = -1;
@@ -87,18 +91,23 @@ namespace linalg
 					}
 				}
 			}
-			if (type_of_data < 0)
+			if (type_of_data == -1)
 				return std::nullopt;
 
 			std::vector<std::vector<double>> rowsData;
 			for (csv::CSVRow& row : reader)
 			{
+				std::cout << "is row?" << std::endl;
 				std::vector<double> rowData;
     		for (csv::CSVField& field : row)
-        	rowData.push_back(field.get<double>());
+        {
+					std::cout << "field.get<>() = " << field.get<>() << std::endl;
+					rowData.push_back(field.get<double>());
+				}
+				std::cout << "numba tzu" << std::endl;
 				rowsData.push_back(rowData);
 			}
-			if (!rowsData.empty())
+			if (rowsData.empty())
 				return std::nullopt;
 
 			int num_of_rows = rowsData.size();
@@ -158,7 +167,7 @@ namespace linalg
 				else if (i == static_cast<int>(dataTypes::matrix))
 				{
 					auto m = std::move(std::get<Matrix>(v_or_m));
-					emms.emplace_back(std::move(m));
+					emms.push_back(std::move(m));
 				}
 			}
 
@@ -177,8 +186,8 @@ namespace linalg
 			if (!possibilities.has_value())
 				return;
 			auto dataPear = std::move(possibilities.value());
-			auto vectorData = std::move(std::get<0>(dataPear));
-			auto matrixData = std::move(std::get<1>(dataPear));
+			auto vectorData = std::move(std::get<std::vector<Vector>>(dataPear));
+			auto matrixData = std::move(std::get<std::vector<Matrix>>(dataPear));
 
 		}
 

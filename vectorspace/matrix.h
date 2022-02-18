@@ -115,6 +115,8 @@ class Matrix {
 
 		void print();
 
+		void writeTeXto(std::string);
+
 		~Matrix() = default;
 
 };

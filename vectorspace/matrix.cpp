@@ -127,6 +127,8 @@ Matrix::Matrix(std::vector<std::vector<double> > mtrx)
 Matrix::Matrix(std::vector<Vector> rows)
 {
 	int numColumns = rows.front().getDimension();
+	nRows = rows.size();
+	mColumns = numColumns;
 	auto rose = makeIndexingSet(rows.size());
 	auto calls = makeIndexingSet(numColumns);
 
@@ -140,6 +142,7 @@ Matrix::Matrix(std::vector<Vector> rows)
 Matrix::Matrix(std::vector<double> diag)
 {
 	int n = diag.size();
+	nRows = mColumns = n;
 	auto square = makeIndexingSet(n);
 
 	matrix = makeMatrix_unique(n, n);
@@ -763,17 +766,41 @@ void Matrix::print()
   	std::cout << "(";
 
   	for (int j : colindices)
-  	{
-    	if (j == (colindices.back() - 1))
-      	std::cout << this->matrix[i][j];
-    	else
+    	if (j != colindices.back())
       	std::cout << this->matrix[i][j] << ", ";
-  	}
+    	else
+      	std::cout << this->matrix[i][j];
 
-  	if (i == (rowindices.back() - 1))
-  		std::cout << ")";
-  	else
+  	if (i != rowindices.back())
   		std::cout << ")," << std::endl;
+  	else
+  		std::cout << ")";
+  }
+
+  std::cout << "]" << std::endl;
+}
+
+void Matrix::writeTeXto(std::string feyell)
+{
+	auto rowindices = makeIndexingSet(this->getNumRows());
+	auto colindices = makeIndexingSet(this->getNumColumns());
+
+  std::cout << "[";
+
+  for (int i : rowindices)
+  {
+  	std::cout << "(";
+
+  	for (int j : colindices)
+    	if (j != colindices.back())
+      	std::cout << this->matrix[i][j] << ", ";
+    	else
+      	std::cout << this->matrix[i][j];
+
+  	if (i != rowindices.back())
+  		std::cout << ")," << std::endl;
+  	else
+  		std::cout << ")";
   }
 
   std::cout << "]" << std::endl;
