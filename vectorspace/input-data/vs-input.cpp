@@ -29,6 +29,15 @@ namespace linalg
 			return static_cast<std::underlying_type_t<T>>(v);
 		}
 
+		constexpr auto isVector = [](int type) {
+			bool binary_truth = type == to_underlying(dataTypes::vector);
+			return binary_truth;
+		};
+		constexpr auto isMatrix = [](int type) {
+			bool binary_truth = type == to_underlying(dataTypes::matrix);
+			return binary_truth;
+		};
+
 		/*
 		auto constructVectorOrMatrix = [](int t1, int t2) {
 			if (t1)
@@ -72,10 +81,10 @@ namespace linalg
 			format.header_row(0)
 						.trim({' ', '\t'});
 						//.variable_columns(true);
-			csv::CSVReader reader(feyell, format);
+			csv::CSVReader reader(feyell);//, format);
 			auto col_names = reader.get_col_names();
 			auto indcs = makeIndexingSet(dataTypeNames.size());
-			int type_of_data = -1;
+			int type_of_data = -1; // I despise this method!
 
 			for (auto col_name : col_names)
 			{
@@ -97,14 +106,9 @@ namespace linalg
 			std::vector<std::vector<double>> rowsData;
 			for (csv::CSVRow& row : reader)
 			{
-				std::cout << "is row?" << std::endl;
 				std::vector<double> rowData;
     		for (csv::CSVField& field : row)
-        {
-					std::cout << "field.get<>() = " << field.get<>() << std::endl;
 					rowData.push_back(field.get<double>());
-				}
-				std::cout << "numba tzu" << std::endl;
 				rowsData.push_back(rowData);
 			}
 			if (rowsData.empty())
@@ -115,17 +119,17 @@ namespace linalg
 			if (num_of_rows == 1)
 			{
 				std::vector<double> rowVector = rowsData.front();
-				if (type_of_data == 0)
+				if (isVector(type_of_data))
 				{
 					Vector v(rowVector);
 					return std::move(v);
-				} else if (type_of_data == 1)
+				} else if (isMatrix(type_of_data))
 				{
 					Matrix m(rowVector);
 					return std::move(m);
 				}
 			}
-			else if (num_of_rows > 1 && type_of_data == 1)
+			else if (num_of_rows > 1 && isMatrix(type_of_data))
 			{
 				Matrix m(rowsData);
 				return std::move(m);
@@ -159,12 +163,11 @@ namespace linalg
 					break;
 				auto v_or_m = std::move(csvFileData.value());
 				const int i = v_or_m.index();
-				if (i == static_cast<int>(dataTypes::vector))
+				if (isVector(i))// (i == static_cast<int>(dataTypes::vector))
 				{
 					auto v = std::move(std::get<Vector>(v_or_m));
 					vees.push_back(std::move(v));
-				}
-				else if (i == static_cast<int>(dataTypes::matrix))
+				} else if (isMatrix(i)) //(i == static_cast<int>(dataTypes::matrix))
 				{
 					auto m = std::move(std::get<Matrix>(v_or_m));
 					emms.push_back(std::move(m));

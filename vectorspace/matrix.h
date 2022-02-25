@@ -42,6 +42,7 @@ class Matrix {
 		int mColumns;
 		std::optional<std::string> label;
 		std::unique_ptr<std::unique_ptr<double[]>[]> matrix;
+		std::optional<std::unique_ptr<LUdcmp>> lud;
 
 	public:
 
@@ -101,7 +102,7 @@ class Matrix {
 
 		Matrix croutLUInv();
 
-		Matrix doolittleLU();
+		std::optional<linalg::LUdcmp> doolittleLU();
 
 		double doolittleLUDet();
 

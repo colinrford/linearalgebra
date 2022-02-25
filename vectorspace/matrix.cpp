@@ -17,8 +17,8 @@ constexpr auto makeIndexingSetStartingAt = [](int index, int size) -> std::list<
 };
 
 constexpr auto makeIndexingSetReverse = [](int n) -> std::list<int> {
-	std::list<int> ell(n);
-	std::iota(ell.end(), ell.begin(), n);
+	auto ell = makeIndexingSet(n);
+	ell.reverse();
 	return ell;
 };
 
@@ -30,6 +30,24 @@ constexpr auto makeMatrix_unique = [](int numRows, int numColumns) {
 
 	return std::move(mtrx);
 };
+
+/*
+auto checkForExistingLUdcmp = [](Matrix& dis) {
+	bool alreadyComputedLUdcmp = dis.lud.has_value();
+	if (!alreadyComputedLUdcmp)
+	{
+		auto lu_decomp = this->croutLU();
+
+		if (!lu_decomp.has_value())
+			return alreadyComputedLUdcmp;
+
+		LUdcmp decomp = std::move(lu_decomp.value());
+		dis.lud = std::make_unique<LUdcmp>(std::move(decomp));
+		alreadyComputedLUdcmp = true;
+	}
+	return alreadyComputedLUdcmp;
+};
+*/
 
 auto zeroVectorOfDim = [](int d) {
 	Vector v(d);
@@ -114,8 +132,10 @@ Matrix::Matrix(int n, std::unique_ptr<std::unique_ptr<double[]>[]> mtrx)
 
 Matrix::Matrix(std::vector<std::vector<double> > mtrx)
 {
-	auto rose = makeIndexingSet(mtrx.size());
-	auto calls = makeIndexingSet(mtrx.front().size());
+	nRows = mtrx.size();
+	mColumns = mtrx.front().size();
+	auto rose = makeIndexingSet(nRows);
+	auto calls = makeIndexingSet(mColumns);
 
 	matrix = makeMatrix_unique(rose.size(), calls.size());
 
@@ -175,7 +195,7 @@ Matrix::Matrix(Matrix&& mtrx) noexcept
 				nRows{mtrx.nRows},
 				mColumns{mtrx.mColumns}
 {
-  //mtrx.nRows = mtrx.mColumns = 0;
+  //mtrx.nRows = mtrx.mColumns = 0; unique_ptr.reset()?
 }
 
 
@@ -485,18 +505,26 @@ std::optional<LUdcmp> Matrix::croutLU()
 
 double Matrix::croutLUDet()
 {
-	auto lu_decomp = this->croutLU();
-	if (!lu_decomp.has_value())
-		return 0.0;
-
-	LUdcmp decomp = std::move(lu_decomp.value());
-	if (decomp.parity == 1 || decomp.parity == -1)
+	bool alreadyComputedLUdcmp = this->lud.has_value();
+	if (!alreadyComputedLUdcmp)
 	{
-		double dtrmnnt = decomp.parity;
+		auto lu_decomp = this->croutLU();
+
+		if (!lu_decomp.has_value())
+			return 0.0;
+
+		LUdcmp decomp = std::move(lu_decomp.value());
+		this->lud = std::make_unique<LUdcmp>(std::move(decomp));
+	}
+
+	LUdcmp* decomp = this->lud.value().get();
+	if (decomp->parity == 1 || decomp->parity == -1)
+	{
+		double dtrmnnt = decomp->parity;
 		auto diag = makeIndexingSet(this->nRows);
 
 		for (auto indx : diag)
-			dtrmnnt *= decomp.lu_decomp[indx][indx];
+			dtrmnnt *= decomp->lu_decomp[indx][indx];
 
 		return dtrmnnt;
 	}
@@ -506,16 +534,25 @@ double Matrix::croutLUDet()
 
 Vector Matrix::croutLUSolveSystem(Vector& b)
 {
-	auto lu_decomp = this->croutLU();
-	if (!lu_decomp.has_value()) // std::optional instead?
-		return std::move(Vector(b.getDimension()));
-	LUdcmp decomp = std::move(lu_decomp.value());
+	bool alreadyComputedLUdcmp = this->lud.has_value();
+	if (!alreadyComputedLUdcmp)
+	{
+		auto lu_decomp = this->croutLU();
+
+		if (!lu_decomp.has_value()) //std::optional?
+			return std::move(Vector(b.getDimension()));
+
+		LUdcmp decomp = std::move(lu_decomp.value());
+		this->lud = std::make_unique<LUdcmp>(std::move(decomp));
+	}
+
+	LUdcmp* decomp = this->lud.value().get();
 
 	int ii = 0, ip;
 	int n = b.getDimension();
 	double sum = 0.0;
-	Vector x(n);
-	Matrix lu = std::move(decomp.lu_decomp);
+	Vector x = zeroVectorOfDim(n);
+	Matrix lu = 1 * decomp->lu_decomp;//!!!!!!!!!!!!!!!!!! copy ;0)
 	auto vecIndices = makeIndexingSet(n);
 
 	for (auto rho : vecIndices)
@@ -523,27 +560,28 @@ Vector Matrix::croutLUSolveSystem(Vector& b)
 
 	for (auto i : vecIndices)
 	{
-		ip = decomp.permutations[i];
+		ip = decomp->permutations[i];
 		sum = x[ip];
 		x[ip] = x[i];
 		if (ii != 0)
 		{
-			auto someIndices = makeIndexingSetStartingAt(ii - 1, i);
+			auto someIndices = makeIndexingSetStartingAt(ii - 1, i - (ii - 1));
 			for (auto j : someIndices) //(j = ii - 1; j < i; j++)
-				sum -= lu.matrix[i][j] * x[j];
+				sum -= lu[i][j] * x[j];
 		}
 		else if (!compare(sum, 0.0))
     	ii = i + 1;
 		x[i] = sum;
 	}
 
-	for (int i = n - 1; i >= 0; i--)
+	auto reversedIndices = makeIndexingSetReverse(n);
+	for (auto i : reversedIndices)//(int i = n - 1; i >= 0; i--)
 	{
 		sum = x[i];
 		auto someIndices = makeIndexingSetStartingAt(i + 1, n - (i + 1));
 		for (auto j : someIndices) //(j = i + 1; j < n; j++)
-			sum -= lu.matrix[i][j] * x[j];
-		x[i] = sum / lu.matrix[i][i];
+			sum -= lu[i][j] * x[j];
+		x[i] = sum / lu[i][i];
 	}
 
 	return std::move(x);
@@ -566,15 +604,15 @@ Matrix Matrix::croutLUSolveMatrixSystem(Matrix& B)
 	auto calls = makeIndexingSet(numColumnsA);
 
 	Matrix X(numRowsA, numColumnsA);
-	Vector b(numRowsA);
-	Vector x(numRowsA);
+	Vector b = zeroVectorOfDim(numRowsA);
+	Vector x = zeroVectorOfDim(numRowsA);
 	for (auto j : calls)
 	{
-		for (auto i : rose)
-			b[i] = B[i][j];
+		for (auto rho : rose)
+			b[rho] = B[rho][j];
 		x = std::move(croutLUSolveSystem(b));
-		for (auto i : rose)
-			X[i][j] = x[i];
+		for (auto rho : rose)
+			X[rho][j] = x[rho];
 	}
 
 	return std::move(X);
@@ -582,12 +620,21 @@ Matrix Matrix::croutLUSolveMatrixSystem(Matrix& B)
 
 Matrix Matrix::croutLUInv()
 {
-	auto lu_decomp = this->croutLU();
-	if (!lu_decomp.has_value()) // std::optional instead?
-		return std::move(Matrix(this->getNumRows(), this->getNumColumns()));
+	bool alreadyComputedLUdcmp = this->lud.has_value();
+	if (!alreadyComputedLUdcmp)
+	{
+		auto lu_decomp = this->croutLU();
 
-	LUdcmp decomp = std::move(lu_decomp.value());
-	int n = decomp.lu_decomp.getNumRows();
+		if (!lu_decomp.has_value()) //std::optional?
+			return std::move(Matrix(this->getNumRows(), this->getNumColumns()));
+
+		LUdcmp decomp = std::move(lu_decomp.value());
+		this->lud = std::make_unique<LUdcmp>(std::move(decomp));
+	}
+
+	LUdcmp* decomp = this->lud.value().get();
+
+	int n = decomp->lu_decomp.getNumRows();
 	auto square = makeIndexingSet(n);
 	auto ainv_entries = makeMatrix_unique(n, n);
 
@@ -599,28 +646,29 @@ Matrix Matrix::croutLUInv()
 				ainv_entries[i][j] = 1.0;
 
 	Matrix ainv(n, std::move(ainv_entries));
-  Matrix A_inv = ainv.croutLUSolveMatrixSystem(ainv);
+  Matrix A_inv = this->croutLUSolveMatrixSystem(ainv);
 	return std::move(A_inv);
 }
 
 // adapted from:	sci.utah.edu/~wallstedt
 // main diagonal of L is composed with 1s
-Matrix Matrix::doolittleLU()
+std::optional<LUdcmp> Matrix::doolittleLU()
 {
 	int n = this->getNumRows();
 	auto square = makeIndexingSet(n);
 	auto lu = makeMatrix_unique(n, n);
+
 	for (int k : square)
 	{
-		auto subsq = makeIndexingSet(k);
-		auto subsqc = makeIndexingSet(n - k);
-		auto subsqcpo = makeIndexingSet(n - k + 1);
+		auto subsq = makeIndexingSet(k + 1);
+		auto subsqc = makeIndexingSetStartingAt(k, n - k);
+		auto subsqcpo = makeIndexingSetStartingAt(k + 1, n - (k + 1));
     for (int j : subsqc)//(int j = k; j < n; ++j)
 		{
       double sum = 0.0;
       for (int p : subsq)
 				sum += lu[k][p] * lu[p][j];
-      lu[k][j] = (this->matrix[k][j] - sum);
+      lu[k][j] = this->matrix[k][j] - sum;
     }
     for (int i : subsqcpo)//(int i = k + 1; i < n; ++i)
 		{
@@ -631,19 +679,28 @@ Matrix Matrix::doolittleLU()
     }
 	}
 	Matrix lu_decomposition(n, std::move(lu));
-	return lu_decomposition;
+	Vector perms = zeroVectorOfDim(n);
+	int parity = 0;
+	
+	LUdcmp lu_decomp(std::move(lu_decomposition), std::move(perms), parity);
+	return std::move(lu_decomp);
 }
 
 //incomplete possibly may need permutation info too?
 double Matrix::doolittleLUDet()
 {
-	Matrix lu_decomposition = this->doolittleLU();
+	auto lu_decomp = this->doolittleLU();
+
+	if (!lu_decomp.has_value()) //std::optional?
+		return 0.0;
+
+	LUdcmp decomp = std::move(lu_decomp.value());
 
 	double dtrmnnt = 0.0;
 	auto diag = makeIndexingSet(this->nRows);
 
 	for (auto indx : diag)
-		dtrmnnt *= lu_decomposition[indx][indx];
+		dtrmnnt *= decomp.lu_decomp[indx][indx];
 
 	return dtrmnnt;
 }

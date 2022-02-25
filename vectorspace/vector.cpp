@@ -62,7 +62,10 @@ Vector& Vector::operator=(Vector&& v)
 auto Vector::operator[](int index) -> decltype(arrow[index])
 {
   if (index >= this->dimension)
+  {
+    std::cout << "Out of bounds for [] " << std::endl;
     throw VectorException();
+  }
 
   return arrow[index];
 }
