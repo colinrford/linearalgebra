@@ -4,6 +4,7 @@
 #include <exception>
 #include <limits>
 #include <memory>
+#include <numeric>
 #include <optional>
 #include <vector>
 
@@ -33,9 +34,9 @@ class Vector {
 
   public:
 
-    Vector(int dim);                      // create a unit vector of dimension dim
+    Vector(int dim);
 
-    Vector(int dim, std::unique_ptr<double[]> elem);  // create a vector with elements elem and dimension dim
+    Vector(int dim, std::unique_ptr<double[]> elem);
 
     Vector(std::vector<double> elem);
 
@@ -51,27 +52,27 @@ class Vector {
 
     int length();
 
-    double* getArrow();       // accessor for arrow
+    double* getArrow();
 
     void setArrow(std::unique_ptr<double[]> elem);
 
-    double norm(Vector& v);                        // norm of this = v; ||v||
+    double norm(Vector& v);
 
-    double dot(Vector& v2);                // this = v1 dot with v2; v1 * v2
+    double dot(Vector& v2);
 
-    Vector cross(Vector& v2);              // cross this = v1 and v2; v1 x v2
+    Vector cross(Vector& v2);
 
-    Vector add(Vector& v2);                // add this = v1 and v2; v1 + v2
+    Vector add(Vector& v2);
 
-    Vector subtract(Vector& v2);           // subtract v2 from this = v1; v1 - v2
+    Vector subtract(Vector& v2);
 
-    Vector scalar(double s);                 // multiply by scalar; s * this = v1
+    Vector scalar(double s);
 
-    Vector unit();                        // returns the unit vector of given vector this = v; v / ||v||
+    Vector unit();
 
-    bool equals(Vector& v2);               // determines whether two vectors are equal
+    bool equals(Vector& v2);
 
-    void print() const;                         // print vector contents (x1, x2, ..., xn, ...)
+    void print() const;
 
     ~Vector() = default;
 };

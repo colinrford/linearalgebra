@@ -1,8 +1,15 @@
 
+#include <list>
 #include "vector.h"
 
 namespace linalg
 {
+
+  constexpr auto makeIndexingSet = [](int n) -> std::list<int> {
+  	std::list<int> ell(n);
+  	std::iota(ell.begin(), ell.end(), 0);
+  	return ell;
+  };
 
 Vector::Vector(int dim)
 {
@@ -14,8 +21,8 @@ Vector::Vector(int dim)
   }
   dimension = dim;
   arrow = std::make_unique<double[]>(dimension);
-
-  for (int i = 0; i < dimension; i++)
+  auto indices = makeIndexingSet(dimension);
+  for (int i : indices)
   {
     if (i == 0)
       arrow[i] = 1;
@@ -24,7 +31,6 @@ Vector::Vector(int dim)
   }
 }
 
-// For now I'll just deal with real numbers and come back later to update for general fields
 Vector::Vector(int dim, std::unique_ptr<double[]> elem) : arrow(std::move(elem))
 {
   try {
@@ -148,7 +154,7 @@ Vector Vector::cross(Vector& v2)
 
   Vector n(d, std::move(elem));
 
-  return std::move(n);
+  return n;
 }
 
 Vector cross(Vector& v1, Vector& v2)
@@ -176,7 +182,7 @@ Vector Vector::add(Vector& v2)
 
 Vector add(Vector& v1, Vector& v2)
 {
-  return std::move(v1.add(v2));
+  return v1.add(v2);
 }
 
 Vector Vector::subtract(Vector& v2)
@@ -207,10 +213,11 @@ Vector subtract(Vector& v1, Vector& v2)
 Vector Vector::scalar(double s)
 {
   int d = this->dimension;
-  auto elem = std::move(this->arrow);
-  for (int i = 0; i < d; i++)
+  auto elem = std::make_unique<double[]>(d);//std::move(this->arrow);
+  auto indices = makeIndexingSet(d);
+  for (int i : indices)
   {
-    elem[i] = s * elem[i];
+    elem[i] = s * arrow[i];
   }
 
   Vector sv(d, std::move(elem));
@@ -251,25 +258,25 @@ bool Vector::equals(Vector& v2)
 Vector operator+(Vector& v1, Vector& v2)
 {
   Vector v3 = add(v1, v2);
-  return std::move(v3);
+  return v3;
 }
 
 Vector operator-(Vector& v1, Vector& v2)
 {
   Vector v3 = subtract(v1, v2);
-  return std::move(v3);
+  return v3;
 }
 
 Vector operator*(double d, Vector& v)
 {
   Vector v3 = v.scalar(d);
-  return std::move(v3);
+  return v3;
 }
 
 Vector operator*(Vector& v, double d)
 {
   Vector u = v.scalar(d);
-  return std::move(u);
+  return u;
 }
 
 Vector operator/(Vector& v, double d)
@@ -277,7 +284,7 @@ Vector operator/(Vector& v, double d)
   double d_inv = 1 / d;
 
   Vector u = v.scalar(d_inv);
-  return std::move(u);
+  return u;
 }
 
 bool operator==(Vector& v1, Vector& v2)

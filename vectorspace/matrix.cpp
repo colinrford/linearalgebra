@@ -436,7 +436,7 @@ double Matrix::det()
 
 // from Numerical Recipes, 3rd Ed – A is square
 // std::optional w Matrix, optionally singular?
-// Crout uses unit diagonals for the upper triangle
+// Crout uses unit diagonals for the upper triangle U
 std::optional<LUdcmp> Matrix::croutLU()
 {
 	int imax = 0, parity = 1;
@@ -681,7 +681,7 @@ std::optional<LUdcmp> Matrix::doolittleLU()
 	Matrix lu_decomposition(n, std::move(lu));
 	Vector perms = zeroVectorOfDim(n);
 	int parity = 0;
-	
+
 	LUdcmp lu_decomp(std::move(lu_decomposition), std::move(perms), parity);
 	return std::move(lu_decomp);
 }
