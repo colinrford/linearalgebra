@@ -1,10 +1,11 @@
-#include <list>
-#include <numeric>
+
+//#include <numeric>
 #include <sstream>
-#include <string>
+//#include <string>
+//#include <chrono>
 #include "vector.cpp"
 
-std::vector<std::string> getVectorInput()
+std::vector<std::string> get_vector_input()
 {
     std::string csvInput;
     std::vector<std::string> components;
@@ -20,29 +21,32 @@ std::vector<std::string> getVectorInput()
     return components;
 }
 
-linalg::Vector createVectorFrom(std::vector<std::string> components)
+linalg::vector create_vector_from(std::vector<std::string> components)
 {
   auto arrow = std::make_unique<double[]>(components.size());
-  std::list<int> ell(components.size());
-  std::iota(ell.begin(), ell.end(), 0);
-  for (auto i : ell)
+  for (auto i = 0; i < components.size(); i++)
     arrow[i] = std::stod(components[i]);
-  linalg::Vector vec(components.size(), std::move(arrow));
-  return std::move(vec);
+  linalg::vector vec(components.size(), std::move(arrow));
+  return vec;
 }
 
 int main()
 {
   int dim;
   bool awaitingInput = true;
-  std::vector<linalg::Vector> vectors;
+  std::vector<linalg::vector> vectors;
 
   while (awaitingInput)
   {
     std::cout << "Adding vectors to list..." << std::endl;
-    auto components = getVectorInput();
-    linalg::Vector v = std::move(createVectorFrom(components));
-    vectors.push_back(std::move(v));
+    auto components = get_vector_input();
+    try {
+      linalg::vector v = std::move(create_vector_from(components));
+      vectors.push_back(std::move(v));
+    } catch (const linalg::vector_exception& e)
+    {
+      std::cout << e.what();
+    }
 
     std::cout << "Do you want to add more? y/n ";
     std::string response;
@@ -65,8 +69,27 @@ int main()
     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
   }
 
-  for (const auto &v : vectors)
+
+  std::cout << std::endl << std::endl;
+
+  for (auto& v : vectors)
     v.print();
+
+  for (const auto& v : vectors)
+  {
+    auto t_0 = std::chrono::system_clock::now();
+    std::cout << "(";
+    for (const auto entry : v)
+      std::cout << entry << ", ";
+    std::cout<< ")";
+    auto t_1 = std::chrono::system_clock::now();
+    auto duration = std::chrono
+                        ::duration_cast<std::chrono
+                        ::nanoseconds>(t_1 - t_0).count();
+    std::cout << "range-based for ~" << duration << "ns" << std::endl;
+  }
+
+  std::cout << std::endl << std::endl;
 
   std::cout << "Hope it worked :-)\nPress return key to end program.";
   std::getchar();

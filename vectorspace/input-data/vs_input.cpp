@@ -1,5 +1,5 @@
 
-#include "../matrix.h"
+#include "../matrix.hpp"
 #include "../../submodules/csv-parser/single_include/csv.hpp"
 #include <filesystem>
 #include <list>
@@ -14,8 +14,8 @@ namespace linalg
 {
 	namespace data_input
 	{
-		enum class dataTypes { vector, matrix }; // { 0, 1 }
-		std::vector<std::string> dataTypeNames = { "vector", "matrix"};
+		enum class dataTypes : int { vector, matrix }; // { 0, 1 }
+		static constexpr std::vector<std::string> dataTypeNames = { "vector", "matrix"};
 		std::vector<std::string> fileExtensions = { ".csv" };
 		constexpr auto makeIndexingSet = [](int n) -> std::list<int> {
 			std::list<int> ell(n);
@@ -47,7 +47,7 @@ namespace linalg
 		};
 		*/
 
-		bool canRead(std::string extension)
+		bool canRead(const std::string extension) const
 		{
 			auto exts = makeIndexingSet(fileExtensions.size());
 			for (auto index : exts)
@@ -74,7 +74,7 @@ namespace linalg
 			return input;
 		}
 
-		std::optional<std::variant<Vector, Matrix>>
+		std::optional<std::variant<vector, matrix>>
 		getCSVDataFrom(const std::string feyell)
 		{
 			csv::CSVFormat format;
@@ -121,18 +121,18 @@ namespace linalg
 				std::vector<double> rowVector = rowsData.front();
 				if (isVector(type_of_data))
 				{
-					Vector v(rowVector);
-					return std::move(v);
+					vector v(rowVector);
+					return v;
 				} else if (isMatrix(type_of_data))
 				{
-					Matrix m(rowVector);
-					return std::move(m);
+					matrix m(rowVector);
+					return m;
 				}
 			}
 			else if (num_of_rows > 1 && isMatrix(type_of_data))
 			{
-				Matrix m(rowsData);
-				return std::move(m);
+				matrix m(rowsData);
+				return m;
 			}
 
 			return std::nullopt;
@@ -140,7 +140,7 @@ namespace linalg
 
 		// directory_iterator help from s.o. question:
 		// 612097/how-can-i-get-the-list-of-files-in-a-directory-using-c-or-c
-		std::optional<std::pair<std::vector<Vector>, std::vector<Matrix>>>
+		std::optional<std::pair<std::vector<vector>, std::vector<matrix>>>
 		getDataFrom(const std::string& directory)
 		{
 			std::vector<std::string> filenames;
@@ -153,8 +153,8 @@ namespace linalg
 			if (filenames.empty())
 				return std::nullopt;
 
-			std::vector<Vector> vees{};
-			std::vector<Matrix> emms{};
+			std::vector<vector> vees{};
+			std::vector<matrix> emms{};
 
 			for (auto feyell : filenames)
 			{
@@ -163,13 +163,13 @@ namespace linalg
 					break;
 				auto v_or_m = std::move(csvFileData.value());
 				const int i = v_or_m.index();
-				if (isVector(i))// (i == static_cast<int>(dataTypes::vector))
+				if (isVector(i))
 				{
-					auto v = std::move(std::get<Vector>(v_or_m));
+					auto v = std::move(std::get<vector>(v_or_m));
 					vees.push_back(std::move(v));
-				} else if (isMatrix(i)) //(i == static_cast<int>(dataTypes::matrix))
+				} else if (isMatrix(i))
 				{
-					auto m = std::move(std::get<Matrix>(v_or_m));
+					auto m = std::move(std::get<matrix>(v_or_m));
 					emms.push_back(std::move(m));
 				}
 			}
@@ -178,20 +178,7 @@ namespace linalg
 				return std::nullopt;
 
 			auto pear = std::make_pair(std::move(vees), std::move(emms));
-			return std::move(pear);
-		}
-
-
-		void wip()
-		{
-			auto realm = getTerminalInput("directory of data files pls");
-			auto possibilities = getDataFrom(realm);
-			if (!possibilities.has_value())
-				return;
-			auto dataPear = std::move(possibilities.value());
-			auto vectorData = std::move(std::get<std::vector<Vector>>(dataPear));
-			auto matrixData = std::move(std::get<std::vector<Matrix>>(dataPear));
-
+			return pear;
 		}
 
 	}
