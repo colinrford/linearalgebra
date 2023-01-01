@@ -1,5 +1,5 @@
 
-#include "vs-input.cpp"
+#include "vs_input.cpp"
 //#include <ranges>
 
 int main()
@@ -17,6 +17,7 @@ int main()
 
   for (auto& v : vectorData)
     v.print();
+  std::cout << std::endl;
   for (auto& m : matrixData)
   {
     m.print();
@@ -31,7 +32,7 @@ int main()
     auto m_times_m_inv = m * m_inv;
     auto m_inv_times_m = m_inv * m;
     bool equ = m_times_m_inv == m_inv_times_m;
-    linalg::matrix id_mtrx(m.getNumRows());
+    linalg::matrix id_mtrx(m.get_num_rows());
     auto equ_ide = m_times_m_inv == id_mtrx;
     if (equ && equ_ide)
       std::cout << "inv seems ok" << std::endl;

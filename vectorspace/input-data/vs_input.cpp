@@ -15,7 +15,7 @@ namespace linalg
 	namespace data_input
 	{
 		enum class dataTypes : int { vector, matrix }; // { 0, 1 }
-		static constexpr std::vector<std::string> dataTypeNames = { "vector", "matrix"};
+		std::vector<std::string> dataTypeNames = { "vector", "matrix"};
 		std::vector<std::string> fileExtensions = { ".csv" };
 		constexpr auto makeIndexingSet = [](int n) -> std::list<int> {
 			std::list<int> ell(n);
@@ -47,7 +47,7 @@ namespace linalg
 		};
 		*/
 
-		bool canRead(const std::string extension) const
+		bool canRead(const std::string extension)
 		{
 			auto exts = makeIndexingSet(fileExtensions.size());
 			for (auto index : exts)

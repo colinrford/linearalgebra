@@ -23,10 +23,10 @@ std::vector<std::string> get_vector_input()
 
 linalg::vector create_vector_from(std::vector<std::string> components)
 {
-  auto arrow = std::make_unique<double[]>(components.size());
+  auto arrow = std::vector<double>(components.size());
   for (auto i = 0; i < components.size(); i++)
     arrow[i] = std::stod(components[i]);
-  linalg::vector vec(components.size(), std::move(arrow));
+  linalg::vector vec(arrow);
   return vec;
 }
 
@@ -41,7 +41,7 @@ int main()
     std::cout << "Adding vectors to list..." << std::endl;
     auto components = get_vector_input();
     try {
-      linalg::vector v = std::move(create_vector_from(components));
+      linalg::vector v = create_vector_from(components);
       vectors.push_back(std::move(v));
     } catch (const linalg::vector_exception& e)
     {
@@ -73,7 +73,25 @@ int main()
   std::cout << std::endl << std::endl;
 
   for (auto& v : vectors)
+  {
+    auto t_0 = std::chrono::system_clock::now();
     v.print();
+    auto t_1 = std::chrono::system_clock::now();
+    auto duration = std::chrono
+                        ::duration_cast<std::chrono
+                        ::nanoseconds>(t_1 - t_0).count();
+    duration /= 1000;
+    std::cout << " v.print() ~" << duration << "ms" << std::endl;
+
+    t_0 = std::chrono::system_clock::now();
+    print(v);
+    t_1 = std::chrono::system_clock::now();
+    duration = std::chrono
+                  ::duration_cast<std::chrono
+                  ::nanoseconds>(t_1 - t_0).count();
+    duration /= 1000;
+    std::cout << " print(v) ~" << duration << "ms" << std::endl;
+  }
 
   for (const auto& v : vectors)
   {
@@ -81,12 +99,41 @@ int main()
     std::cout << "(";
     for (const auto entry : v)
       std::cout << entry << ", ";
-    std::cout<< ")";
+    std::cout << ")";
     auto t_1 = std::chrono::system_clock::now();
     auto duration = std::chrono
                         ::duration_cast<std::chrono
                         ::nanoseconds>(t_1 - t_0).count();
-    std::cout << "range-based for ~" << duration << "ns" << std::endl;
+    duration /= 1000;
+    std::cout << " range-based for ~" << duration << "ms" << std::endl;
+  }
+
+  for (const auto& v : vectors)
+  {
+    auto t_0 = std::chrono::system_clock::now();
+    auto v_hat = v.unit();
+    auto t_1 = std::chrono::system_clock::now();
+    auto duration = std::chrono
+                        ::duration_cast<std::chrono
+                        ::nanoseconds>(t_1 - t_0).count();
+    duration /= 1000;
+    std::cout << "unit vector ~" << duration << "ms" << std::endl;
+    t_0 = std::chrono::system_clock::now();
+    v_hat.print();
+    t_1 = std::chrono::system_clock::now();
+    duration = std::chrono::duration_cast<std::chrono
+                  ::nanoseconds>(t_1 - t_0).count();
+    duration /= 1000;
+    std::cout << "v_hat.print() ~" << duration << "ms" << std::endl;
+
+    t_0 = std::chrono::system_clock::now();
+    print(v_hat);
+    t_1 = std::chrono::system_clock::now();
+    duration = std::chrono::duration_cast<std::chrono
+                  ::nanoseconds>(t_1 - t_0).count();
+    duration /= 1000;
+    std::cout << "print(v_hat) ~" << duration << "ms" << std::endl;
+    std::cout << std::endl;
   }
 
   std::cout << std::endl << std::endl;

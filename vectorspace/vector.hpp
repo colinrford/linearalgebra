@@ -41,6 +41,11 @@ struct vector_exception : public std::exception {
       return "Construction of a vector with nullptr is not allowed.\n";
     }
   };
+  struct plus_equals_unequal_dim : public std::exception {
+    const char* what () const throw () {
+      return "operator+= is more restricted than others, it requires the vectors have equal dimension.\n";
+    }
+  };
 };
 
 struct vector_info;
@@ -54,13 +59,16 @@ class vector {
     std::optional<std::string> label;
     std::optional<std::unique_ptr<vector_info>> info;
 
+    //dangerous
+    vector(const std::size_t dim, std::unique_ptr<double[]> elem);
+
   public:
 
-    vector() = delete; // for now?
+    using value_type = double;
+
+    //vector() = delete; // for now?
 
     vector(const std::size_t dim);
-
-    vector(const std::size_t dim, std::unique_ptr<double[]> elem);
 
     vector(const std::vector<double> elem);
 
@@ -72,37 +80,49 @@ class vector {
 
     auto operator[](const std::size_t index) -> decltype(arrow[index]);
 
-    [[nodiscard]] constexpr bool empty() const noexcept; // copying stdlib
+    auto operator[](const std::size_t index) const -> decltype(arrow[index]);
 
-    constexpr std::size_t get_dimension() const;
+    //[[nodiscard]] constexpr bool empty() const noexcept; // copying stdlib
 
-    constexpr std::size_t size() const;
+    constexpr std::size_t get_dimension() const { return dimension; }
 
-    constexpr std::size_t length() const;
+    constexpr std::size_t size() const { return dimension; }
+
+    constexpr std::size_t length() const { return dimension; }
 
     double* get_arrow() const;
 
-    double mag() const;
+    double mag();
 
-    double mag2() const;
+    const double mag() const;
 
-    double norm() const;
+    double mag2();
 
-    double norm2() const;
+    const double mag2() const;
+
+    double norm();
+
+    const double norm() const;
+
+    double norm2();
+
+    const double norm2() const;
 
     double dot(const vector& v2) const;
 
-    vector cross(const vector& v2);
+    vector cross(const vector& v2) const;
 
-    vector add(const vector& v2);
+    vector add(const vector& v2) const;
 
-    vector subtract(const vector& v2);
+    vector subtract(const vector& v2) const;
 
-    vector scalar(const double s);
+    vector scalar(const double s) const;
 
-    vector unit();
+    vector unit() const;
 
-    bool equals(const vector& v2) const;
+    constexpr bool equals(const vector& v2) const;
+
+    vector& operator+=(const vector&);
 
     void print() const;
 
@@ -129,17 +149,29 @@ struct vector_info
 {
   double norm;
   double norm_squared;
-  double trick;
-  double tat;
+  vector_info(double n, double n2)
+  { //gcc figures this out but clang does not
+    norm = n;
+    norm_squared = n2;
+  }
 };
 
-vector add(vector& v1, vector& v2);
-vector operator+(vector&, const vector&);
-vector operator-(vector&, const vector&);
-vector operator*(const double, vector&);
-vector operator*(vector&, const double);
-vector operator/(vector&, const double);
+
+vector operator+(const vector&, const vector&);
+vector operator-(const vector&, const vector&);
+vector operator*(const double, const vector&);
+vector operator*(const vector&, const double);
+vector operator/(const vector&, const double);
 bool operator==(const vector&, const vector&);
-constexpr bool compare(const double, const double);
+
+constexpr bool compare(const double a, const double b)
+{
+  constexpr double epsilon = std::numeric_limits<double>::epsilon();
+
+  if (abs(b - a) < epsilon)
+    return true;
+  else
+    return false;
+}
 
 }

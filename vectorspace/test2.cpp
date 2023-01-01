@@ -1,16 +1,37 @@
 
-#include "matrix.cpp"
+#include "matrix.hpp"
+#include <ranges>
 #include <sstream>
 
-linalg::Vector createVectorFrom(std::vector<std::string> components)
+std::vector<std::string> get_vector_input()
+{
+    std::string csvInput;
+    std::vector<std::string> components;
+    std::cout << "Enter vector as csv, no other characters." << std::endl;
+    std::getline(std::cin, csvInput);
+    std::stringstream s_stream(csvInput); //create string stream from the string
+    while(s_stream.good())
+    {
+        std::string component;
+        std::getline(s_stream, component, ','); //get first string delimited by comma
+        components.push_back(component);
+    }
+    return components;
+}
+
+auto makeIndexingSet = [](int n) {
+	return std::views::iota(0, n);
+};
+
+linalg::vector create_vector_from(std::vector<std::string> components)
 {
   auto arrow = std::make_unique<double[]>(components.size());
-	auto ell = linalg::makeIndexingSet(components.size());
+	auto ell = makeIndexingSet(components.size());
 
-  for (auto i : ell)
+  for (std::size_t i : ell)
     arrow[i] = std::stod(components[i]);
-  linalg::Vector vec(components.size(), std::move(arrow));
-  return std::move(vec);
+  linalg::vector vec(components.size(), std::move(arrow));
+  return vec;
 }
 /*
 void readCSVMatrixInput()
@@ -27,9 +48,9 @@ void readCSVMatrixInput()
 	}
 }*/
 
-linalg::Matrix createMatrixFrom(std::vector<linalg::Vector> rows)
+linalg::matrix createMatrixFrom(std::vector<linalg::vector> rows)
 {
-	return std::move(linalg::Matrix(std::move(rows)));
+	return std::move(linalg::matrix(std::move(rows)));
 }
 
 int main()
@@ -43,9 +64,9 @@ int main()
 
 	try {
 		if ((numRows <= 0) || (numColumns <= 0))
-			throw linalg::MatrixException();
-	} catch (linalg::MatrixException& e) {
-		std::cout << "Error! :0( " << e.nonPos() << std::endl;
+			throw linalg::matrix_exception();
+	} catch (linalg::matrix_exception& e) {
+		std::cout << "Error! :0( " << e.what() << std::endl;
 		return 0;
 	}
 
@@ -61,7 +82,7 @@ int main()
 	}
 
 	std::cout << "\nMatrix m_1 = " << std::endl;
-	linalg::Matrix m1(numRows, numColumns, std::move(entries));
+	linalg::matrix m1(numRows, numColumns, std::move(entries));
 	m1.print();
 
 	auto entries2 = std::make_unique<std::unique_ptr<double[]>[]>(numRows);//, std::make_unique<double[]>(mColumns));
@@ -76,25 +97,25 @@ int main()
 	}
 
 	std::cout << "\nMatrix m_2 = " << std::endl;
-	linalg::Matrix m2(numRows, numColumns, std::move(entries2));
+	linalg::matrix m2(numRows, numColumns, std::move(entries2));
 	m2.print();
 
 	std::cout << "\nThe sum of these two matrices is the matrix: " << std::endl;
-	linalg::Matrix m3 = m1 + m2;
+	linalg::matrix m3 = m1 + m2;
 	m3.print();
 
 	std::cout << "\nThe difference of these two matrices is the matrix: " << std::endl;
-	linalg::Matrix m4 = m1 - m2;
+	linalg::matrix m4 = m1 - m2;
 	m4.print();
 
-	bool tru = m1.isSquare();
+	bool tru = m1.is_square();
 	if (tru)
 		std::cout << "\n~ ~ ~ indeed square ~ ~ ~" << std::endl;
 	else
 		std::cout << "\nNot At All Square (NAAS) ! ! !" << std::endl;
 
 	std::cout <<"\nThe product of m1 and m2 is the matrix: " << std::endl;
-	linalg::Matrix m5 = m1 * m2;
+	linalg::matrix m5 = m1 * m2;
 	m5.print();
 
 	std::cout << "Hope it worked :0)\nPress return to end program.";
