@@ -56,7 +56,7 @@ class vector {
 
     std::size_t dimension;
     std::unique_ptr<double[]> arrow;
-    std::optional<std::string> label;
+    std::optional<std::string_view> label;
     std::optional<std::unique_ptr<vector_info>> info;
 
     //dangerous
@@ -68,13 +68,13 @@ class vector {
 
     //vector() = delete; // for now?
 
-    vector(const std::size_t dim);
+    vector(const std::size_t);
 
-    vector(const std::vector<double> elem);
+    vector(const std::vector<double>);
 
-    vector(vector&& v) noexcept;
+    vector(vector&&) noexcept;
 
-    vector& operator=(vector&& v);
+    vector& operator=(vector&&);
 
     //const auto operator[](const std::size_t index) const -> decltype(arrow[index]);
 
@@ -90,37 +90,49 @@ class vector {
 
     constexpr std::size_t length() const { return dimension; }
 
+    void give_label(std::string);
+
+    void give_label(std::string_view);
+
+    std::string_view get_label() const;
+
+    std::string_view name() const;
+
+    void compute_info();
+
+    double* get() const;
+
     double* get_arrow() const;
 
     double mag();
 
-    const double mag() const;
+    double mag() const;
 
     double mag2();
 
-    const double mag2() const;
+    double mag2() const;
 
     double norm();
 
-    const double norm() const;
+    double norm() const;
 
     double norm2();
 
-    const double norm2() const;
+    double norm2() const;
 
-    double dot(const vector& v2) const;
+    double dot(const vector&) const;
 
-    vector cross(const vector& v2) const;
+    vector cross(const vector&) const;
 
-    vector add(const vector& v2) const;
+    vector add(const vector&) const;
 
-    vector subtract(const vector& v2) const;
+    vector subtract(const vector&) const;
 
-    vector scalar(const double s) const;
+    vector scalar(const double) const;
 
     vector unit() const;
 
-    constexpr bool equals(const vector& v2) const;
+    constexpr bool equals(const vector&) const;
 
     vector& operator+=(const vector&);
 
@@ -140,22 +152,23 @@ class vector {
 
     const_iterator end() const;
 
-    const_iterator cbegin() const;
+    const const_iterator cbegin() const;
 
-    const_iterator cend() const;
-};
+    const const_iterator cend() const;
+};  // end class vector 
 
 struct vector_info
 {
   double norm;
   double norm_squared;
-  vector_info(double n, double n2)
+  constexpr vector_info(double n, double n2)
   { //gcc figures this out but clang does not
     norm = n;
     norm_squared = n2;
   }
 };
 
+vector make_zero_vector(const std::size_t);
 
 vector operator+(const vector&, const vector&);
 vector operator-(const vector&, const vector&);
@@ -174,4 +187,4 @@ constexpr bool compare(const double a, const double b)
     return false;
 }
 
-}
+} // end namespace linalg

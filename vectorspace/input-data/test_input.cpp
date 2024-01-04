@@ -4,8 +4,10 @@
 
 int main()
 {
-  auto realm = ".";//linalg::data_input::getTerminalInput("directory of data files pls");
-  auto possibilities = linalg::data_input::getDataFrom(realm);
+  auto realm = "."; // checks current folder
+                    //linalg::data_input
+                    //      ::get_terminal_input("directory of data files pls");
+  auto possibilities = linalg::data_input::get_data_from(realm);
   if (!possibilities.has_value())
   {
     std::cout << "no possibilities in this realm" << std::endl;
@@ -33,7 +35,7 @@ int main()
     auto m_inv_times_m = m_inv * m;
     bool equ = m_times_m_inv == m_inv_times_m;
     linalg::matrix id_mtrx(m.get_num_rows());
-    auto equ_ide = m_times_m_inv == id_mtrx;
+    bool equ_ide = m_times_m_inv == id_mtrx;
     if (equ && equ_ide)
       std::cout << "inv seems ok" << std::endl;
     else

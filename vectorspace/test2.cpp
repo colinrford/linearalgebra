@@ -25,12 +25,10 @@ auto makeIndexingSet = [](int n) {
 
 linalg::vector create_vector_from(std::vector<std::string> components)
 {
-  auto arrow = std::make_unique<double[]>(components.size());
-	auto ell = makeIndexingSet(components.size());
-
-  for (std::size_t i : ell)
+  auto arrow = std::vector<double>(components.size());
+  for (std::size_t i : arrow)
     arrow[i] = std::stod(components[i]);
-  linalg::vector vec(components.size(), std::move(arrow));
+  linalg::vector vec(arrow);
   return vec;
 }
 /*

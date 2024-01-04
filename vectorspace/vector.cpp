@@ -23,7 +23,7 @@ vector::vector(const std::size_t dim)
   {
     dimension = dim;
     arrow = std::make_unique<double[]>(dimension);
-    for (auto i = 0; i < dimension; i++)
+    for (std::size_t i = 0; i < dimension; i++)
       if (i != 0)
         arrow[i] = 0.;
       else
@@ -48,13 +48,14 @@ vector::vector(const std::vector<double> elem)
   if (dimension > 0)
   {
     arrow = std::make_unique<double[]>(dimension);
-    for (auto i = 0; i < dimension; i++)
+    for (std::size_t i = 0; i < dimension; i++)
       arrow[i] = elem[i];
   } else  throw vector_exception::non_pos();
 }
 
 vector::vector(vector&& v) noexcept
-      : arrow{std::move_if_noexcept(v.arrow)}, dimension{v.dimension}
+      : dimension{v.dimension},
+        arrow{std::move_if_noexcept(v.arrow)}
 {
   v.dimension = 0;
 }
@@ -85,32 +86,50 @@ auto vector::operator[](const std::size_t index) const
     throw vector_exception::out_of_bounds();
 }
 
-//std::size_t vector::get_dimension() const { return dimension; }
+void vector::give_label(std::string s)
+{ label = std::make_optional(s); }
 
-// std::size_t vector::size() const { return dimension; }
+void vector::give_label(std::string_view s)
+{ label = std::make_optional(s); }
 
-// std::size_t vector::length() const { return dimension; }
+std::string_view vector::get_label() const
+{
+  if (label.has_value())
+    return *label;
+  else
+    return "";
+}
+
+std::string_view vector::name() const
+{ return this->get_label(); }
+
+void vector::compute_info()
+{
+  if (!info.has_value())
+  {
+    const auto scoped_norm_sq = this->dot(*this);
+    const auto scoped_norm = sqrt(scoped_norm_sq);
+    const auto scoped_info = vector_info(scoped_norm, scoped_norm_sq);
+    auto scoped_pointed_info = std::make_unique<vector_info>(scoped_info);
+    info = std::make_optional(std::move(scoped_pointed_info));
+  }
+}
 
 // Raw pointers are okay if they are non-owning
+double* vector::get() const
+{ return arrow.get(); }
+
 double* vector::get_arrow() const
 { return arrow.get(); }
 
 double vector::mag()
 {
-  if (info.has_value())
-    return (*info)->norm;
-  else
-  {
-    auto scoped_mag = sqrt(this->dot(*this));
-    auto scoped_mag2 = scoped_mag * scoped_mag;
-    auto scoped_info = vector_info(scoped_mag, scoped_mag2);
-    auto scoped_pointed_info = std::make_unique<vector_info>(scoped_info);
-    info = std::make_optional(std::move(scoped_pointed_info));
-    return scoped_mag;
-  }
+  if (!info.has_value())
+    this->compute_info();
+  return (*info)->norm;
 }
 
-const double vector::mag() const
+double vector::mag() const
 {
   if (info.has_value())
     return (*info)->norm;
@@ -120,20 +139,12 @@ const double vector::mag() const
 
 double vector::mag2()
 {
-  if (info.has_value())
-    return (*info)->norm_squared;
-  else
-  {
-    auto scoped_mag2 = this->dot(*this);
-    auto scoped_mag = sqrt(scoped_mag2);
-    auto scoped_info = vector_info(scoped_mag, scoped_mag2);
-    auto scoped_pointed_info = std::make_unique<vector_info>(scoped_info);
-    info = std::make_optional(std::move(scoped_pointed_info));
-    return scoped_mag2;
-  }
+  if (!info.has_value())
+    this->compute_info();
+  return (*info)->norm_squared;
 }
 
-const double vector::mag2() const
+double vector::mag2() const
 {
   if (info.has_value())
     return (*info)->norm_squared;
@@ -143,20 +154,12 @@ const double vector::mag2() const
 
 double vector::norm()
 {
-  if (info.has_value())
-    return (*info)->norm;
-  else
-  {
-    auto scoped_norm = sqrt(this->dot(*this));
-    auto scoped_norm2 = scoped_norm * scoped_norm;
-    auto scoped_info = vector_info(scoped_norm, scoped_norm2);
-    auto scoped_pointed_info = std::make_unique<vector_info>(scoped_info);
-    info = std::make_optional(std::move(scoped_pointed_info));
-    return scoped_norm;
-  }
+  if (!info.has_value())
+    this->compute_info();
+  return (*info)->norm;
 }
 
-const double vector::norm() const
+double vector::norm() const
 {
   if (info.has_value())
     return (*info)->norm;
@@ -166,20 +169,12 @@ const double vector::norm() const
 
 double vector::norm2()
 {
-  if (info.has_value())
-    return (*info)->norm_squared;
-  else
-  {
-    auto scoped_norm2 = this->dot(*this);
-    auto scoped_norm = sqrt(scoped_norm2);
-    auto scoped_info = vector_info(scoped_norm, scoped_norm2);
-    auto scoped_pointed_info = std::make_unique<vector_info>(scoped_info);
-    info = std::make_optional(std::move(scoped_pointed_info));
-    return scoped_norm2;
-  }
+  if (!info.has_value())
+    this->compute_info();
+  return (*info)->norm_squared;
 }
 
-const double vector::norm2() const
+double vector::norm2() const
 {
   if (info.has_value())
     return (*info)->norm_squared;
@@ -198,7 +193,7 @@ double vector::dot(const vector& v2) const
     min = d1;
 
   double dot = 0.0;
-  for (auto i = 0; i < min; i++)
+  for (std::size_t i = 0; i < min; i++)
     dot += this->arrow[i] * v2.arrow[i];
 
   return (!compare(dot, 0.)) ? dot : 0.;
@@ -219,7 +214,7 @@ vector vector::cross(const vector& v2) const
   elem[1] = -(this->arrow[0] * v2.arrow[2] - this->arrow[2] * v2.arrow[0]);
   elem[2] = this->arrow[0] * v2.arrow[1] - this->arrow[1] * v2.arrow[0];
 
-  for (auto i = 0; i < d1; i++)
+  for (std::size_t i = 0; i < d1; i++)
     if (compare(elem[i], 0.)) // expensive and possibly unnecessary?
       elem[i] = 0.;
 
@@ -236,29 +231,27 @@ vector vector::add(const vector& v2) const
   if (d1 == d2)
   {
     auto elem = std::make_unique<double[]>(d1);
-    for (auto i = 0; i < d1; i++)
+    for (std::size_t i = 0; i < d1; i++)
       elem[i] = this->arrow[i] + v2.arrow[i];
     return vector(d1, std::move(elem));
   } else
   {
     const auto [min, max] = std::minmax(d1, d2);
     auto elem = std::make_unique<double[]>(max);
-    for (auto i = 0; i < min; i++)
+    for (std::size_t i = 0; i < min; i++)
       elem[i] = this->arrow[i] + v2.arrow[i];
     if (d1 == min)
-      for (auto i = min; i < max; i++)
+      for (std::size_t i = min; i < max; i++)
         elem[i] = v2.arrow[i];
     else
-      for (auto i = min; i < max; i++)
+      for (std::size_t i = min; i < max; i++)
         elem[i] = this->arrow[i];
     return vector(max, std::move(elem));
   }
 }
 
 vector add(const vector& v1, const vector& v2)
-{
-  return v1.add(v2);
-}
+{ return v1.add(v2); }
 
 vector vector::subtract(const vector& v2) const
 {
@@ -267,35 +260,33 @@ vector vector::subtract(const vector& v2) const
   if (d1 == d2)
   {
     auto elem = std::make_unique<double[]>(d1);
-    for (auto i = 0; i < d1; i++)
+    for (std::size_t i = 0; i < d1; i++)
       elem[i] = this->arrow[i] - v2.arrow[i];
     return vector(d1, std::move(elem));
   } else
   {
     const auto [min, max] = std::minmax(d1, d2);
     auto elem = std::make_unique<double[]>(max);
-    for (auto i = 0; i < min; i++)
+    for (std::size_t i = 0; i < min; i++)
       elem[i] = this->arrow[i] - v2.arrow[i];
     if (d1 == min)
-      for (auto i = min; i < max; i++)
+      for (std::size_t i = min; i < max; i++)
         elem[i] = -v2.arrow[i];
     else
-      for (auto i = min; i < max; i++)
+      for (std::size_t i = min; i < max; i++)
         elem[i] = this->arrow[i];
     return vector(max, std::move(elem));
   }
 }
 
 vector subtract(const vector& v1, const vector& v2)
-{
-  return v1.subtract(v2);
-}
+{ return v1.subtract(v2); }
 
 vector vector::scalar(const double s) const
 {
   const std::size_t d = this->dimension;
   auto elem = std::make_unique<double[]>(d);
-  for (auto i = 0; i < d; i++)
+  for (std::size_t i = 0; i < d; i++)
     elem[i] = s * arrow[i];
 
   return vector(d, std::move(elem));
@@ -303,15 +294,19 @@ vector vector::scalar(const double s) const
 
 vector vector::unit() const
 {
-  const double norm = this->norm();
+  double norm;
+  if (info.has_value())
+    norm = (*info)->norm;
+  else
+    norm = this->norm();
 
-  if (compare(norm, 0.))
+  if (compare(norm, 1.))
     return 1 * *this; // lazy, probably expensive copy
 
   const double one_over_norm = 1 / norm;
   const std::size_t d = this->dimension;
   auto elem = std::make_unique<double[]>(d);
-  for (auto i = 0; i < d; i++)
+  for (std::size_t i = 0; i < d; i++)
     elem[i] = this->arrow[i] * one_over_norm;
 
   return vector(d, std::move(elem));
@@ -324,7 +319,7 @@ constexpr bool vector::equals(const vector& v2) const
 
   if (d1 != d2)
     return false;
-  for (auto i = 0; i < d1; i++)
+  for (std::size_t i = 0; i < d1; i++)
     if (!compare(this->arrow[i], v2.arrow[i]))
       return false;
 
@@ -337,13 +332,15 @@ vector& vector::operator+=(const vector& v2)
   const auto d2 = v2.dimension;
   if (d1 == d2)
   {
-    for (auto i = 0; i < d1; i++)
+    for (std::size_t i = 0; i < d1; i++)
       this->arrow[i] += v2.arrow[i];
     return *this;
   } else  throw vector_exception::plus_equals_unequal_dim();
 }
 
 vector operator+(const vector& v1, const vector& v2) { return v1.add(v2); }
+
+vector operator+(const vector v1, const vector v2) { return v1.add(v2); }
 
 vector operator-(const vector& v1, const vector& v2) { return v1.subtract(v2); }
 
@@ -447,7 +444,7 @@ public:
   { return iter_ptr == other.iter_ptr; }
 
   constexpr bool operator!=(const iterator& other) const noexcept
-  { return iter_ptr != other.iter_ptr; }
+  { return iter_ptr != other.iter_ptr; } // should it be !( == )?
 
   constexpr bool operator<(iterator other) const noexcept
   { return iter_ptr < other.iter_ptr; }
@@ -466,14 +463,14 @@ public:
 
   constexpr friend auto operator<=>(iterator, iterator) = default;
 
-  constexpr friend double operator-(iterator first, iterator second)
-  { return *first - *second; }
+  constexpr friend difference_type operator-(iterator first, iterator second)
+  { return *first - *second; } // are
 
   constexpr friend iterator operator+(iterator it, int off)
-  { return it += off; }
+  { return it += off; } // these
 
   constexpr friend iterator operator-(iterator it, int off)
-  { return it -= off; }
+  { return it -= off; } // okay? sure
 
   //friend iterator operator+(int off, iterator);
 
@@ -602,15 +599,29 @@ vector::const_iterator vector::begin() const
 vector::const_iterator vector::end() const
 { return vector::const_iterator(arrow.get() + dimension); }
 
-vector::const_iterator vector::cbegin() const
+const vector::const_iterator vector::cbegin() const
 { return vector::const_iterator(arrow.get()); }
 
-vector::const_iterator vector::cend() const
+const vector::const_iterator vector::cend() const
 { return vector::const_iterator(arrow.get() + dimension); }
 
 /*
  *  END iterator implementation
  */
+
+ vector make_zero_vector(const std::size_t dim)
+ {
+   /*auto elem = std::make_unique<double[]>(dim);
+
+   std::fill(elem.get(), elem.get() + dim, 0.);
+
+   return vector(dim, std::move(elem));*/
+   auto zero_vec = vector(dim);
+
+   //std::fill(zero_vec.begin(), zero_vec.end(), 0.);
+
+   return zero_vec;
+ }
 
 void vector::print() const
 {
@@ -624,10 +635,10 @@ void vector::print() const
 void print(const vector& v)
 {
   std::cout << "(";
-  auto all_but_last = std::ranges::subrange(v.begin(), v.end() - 1);
-  for (auto entry : v)
+  const auto all_but_last = std::ranges::subrange(v.begin(), v.end() - 1);
+  for (const auto entry : all_but_last)
     std::cout << entry << ", ";
-  std::cout << *v.end() << ")" << std::endl;
+  std::cout << *(v.end() - 1) << ")" << std::endl;
 }
 
 }

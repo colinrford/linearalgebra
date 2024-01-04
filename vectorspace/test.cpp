@@ -24,7 +24,7 @@ std::vector<std::string> get_vector_input()
 linalg::vector create_vector_from(std::vector<std::string> components)
 {
   auto arrow = std::vector<double>(components.size());
-  for (auto i = 0; i < components.size(); i++)
+  for (std::size_t i = 0; i < components.size(); i++)
     arrow[i] = std::stod(components[i]);
   linalg::vector vec(arrow);
   return vec;
@@ -32,7 +32,7 @@ linalg::vector create_vector_from(std::vector<std::string> components)
 
 int main()
 {
-  int dim;
+  //int dim;
   bool awaitingInput = true;
   std::vector<linalg::vector> vectors;
 
@@ -74,18 +74,18 @@ int main()
 
   for (auto& v : vectors)
   {
-    auto t_0 = std::chrono::system_clock::now();
+    auto t_0 = std::chrono::steady_clock::now();
     v.print();
-    auto t_1 = std::chrono::system_clock::now();
+    auto t_1 = std::chrono::steady_clock::now();
     auto duration = std::chrono
                         ::duration_cast<std::chrono
                         ::nanoseconds>(t_1 - t_0).count();
     duration /= 1000;
     std::cout << " v.print() ~" << duration << "ms" << std::endl;
 
-    t_0 = std::chrono::system_clock::now();
+    t_0 = std::chrono::steady_clock::now();
     print(v);
-    t_1 = std::chrono::system_clock::now();
+    t_1 = std::chrono::steady_clock::now();
     duration = std::chrono
                   ::duration_cast<std::chrono
                   ::nanoseconds>(t_1 - t_0).count();
@@ -95,12 +95,12 @@ int main()
 
   for (const auto& v : vectors)
   {
-    auto t_0 = std::chrono::system_clock::now();
+    auto t_0 = std::chrono::steady_clock::now();
     std::cout << "(";
     for (const auto entry : v)
       std::cout << entry << ", ";
     std::cout << ")";
-    auto t_1 = std::chrono::system_clock::now();
+    auto t_1 = std::chrono::steady_clock::now();
     auto duration = std::chrono
                         ::duration_cast<std::chrono
                         ::nanoseconds>(t_1 - t_0).count();
@@ -110,25 +110,53 @@ int main()
 
   for (const auto& v : vectors)
   {
-    auto t_0 = std::chrono::system_clock::now();
+    auto t_0 = std::chrono::steady_clock::now();
     auto v_hat = v.unit();
-    auto t_1 = std::chrono::system_clock::now();
+    auto t_1 = std::chrono::steady_clock::now();
     auto duration = std::chrono
                         ::duration_cast<std::chrono
                         ::nanoseconds>(t_1 - t_0).count();
     duration /= 1000;
     std::cout << "unit vector ~" << duration << "ms" << std::endl;
-    t_0 = std::chrono::system_clock::now();
+    t_0 = std::chrono::steady_clock::now();
     v_hat.print();
-    t_1 = std::chrono::system_clock::now();
+    t_1 = std::chrono::steady_clock::now();
     duration = std::chrono::duration_cast<std::chrono
                   ::nanoseconds>(t_1 - t_0).count();
     duration /= 1000;
     std::cout << "v_hat.print() ~" << duration << "ms" << std::endl;
 
-    t_0 = std::chrono::system_clock::now();
+    t_0 = std::chrono::steady_clock::now();
     print(v_hat);
-    t_1 = std::chrono::system_clock::now();
+    t_1 = std::chrono::steady_clock::now();
+    duration = std::chrono::duration_cast<std::chrono
+                  ::nanoseconds>(t_1 - t_0).count();
+    duration /= 1000;
+    std::cout << "print(v_hat) ~" << duration << "ms" << std::endl;
+    std::cout << std::endl;
+  }
+
+  for (auto& v : vectors)
+  {
+    auto t_0 = std::chrono::steady_clock::now();
+    v.compute_info();
+    auto t_1 = std::chrono::steady_clock::now();
+    auto duration = std::chrono
+                        ::duration_cast<std::chrono
+                        ::nanoseconds>(t_1 - t_0).count();
+    duration /= 1000;
+    std::cout << "v.compute_info() ~" << duration << "ms" << std::endl;
+    t_0 = std::chrono::steady_clock::now();
+    auto v_hat = v.unit();
+    t_1 = std::chrono::steady_clock::now();
+    duration = std::chrono::duration_cast<std::chrono
+                  ::nanoseconds>(t_1 - t_0).count();
+    duration /= 1000;
+    std::cout << "v.unit() ~" << duration << "ms" << std::endl;
+
+    t_0 = std::chrono::steady_clock::now();
+    print(v_hat);
+    t_1 = std::chrono::steady_clock::now();
     duration = std::chrono::duration_cast<std::chrono
                   ::nanoseconds>(t_1 - t_0).count();
     duration /= 1000;

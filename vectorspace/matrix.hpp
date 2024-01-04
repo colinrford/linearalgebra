@@ -62,25 +62,26 @@ class matrix {
 
 		std::size_t n_rows;
 		std::size_t m_columns;
-		std::optional<std::string> label;
+		std::optional<std::string_view> label;
 		std::unique_ptr<std::unique_ptr<double[]>[]> matrix_ptr;
 		std::optional<std::unique_ptr<LUdcmp>> lud;
+
+		matrix(const std::size_t n, const std::size_t m,
+						std::unique_ptr<std::unique_ptr<double[]>[]> mtrx);
+		matrix(const std::size_t n,
+						std::unique_ptr<std::unique_ptr<double[]>[]> mtrx);
 
 	public:
 
 		matrix(const std::size_t n, const std::size_t m);
 
-		matrix(const std::size_t n, const std::size_t m, std::unique_ptr<std::unique_ptr<double[]>[]> mtrx);
-
 		matrix(const std::size_t n);
 
-		matrix(const std::size_t n, std::unique_ptr<std::unique_ptr<double[]>[]> mtrx);
-
-		matrix(const vector diag);
+		matrix(const vector& diag);
 
 		matrix(const std::vector<double> diag);
 
-		matrix(const std::vector<std::vector<double> > mtrx);
+		matrix(const std::vector<std::vector<double>> mtrx);
 
 		matrix(std::vector<linalg::vector> rows);
 
@@ -91,6 +92,10 @@ class matrix {
 		auto operator[](const std::size_t index) -> decltype(matrix_ptr[index]);
 
 		auto operator[](const std::size_t index) const -> decltype(matrix_ptr[index]);
+
+		double& operator[](const std::size_t i, const std::size_t j);
+
+		double& operator[](const std::size_t i, const std::size_t j) const;
 
 		std::size_t get_num_rows() const;
 
@@ -138,6 +143,12 @@ class matrix {
 
 		~matrix() = default;
 
+		struct iterator;
+
+    iterator begin();
+
+    iterator end();
+
 };
 
 struct LUdcmp
@@ -150,6 +161,19 @@ struct LUdcmp
 					: lu_decomp(std::move(lud)),
 						permutations(std::move(perms)),
 						parity(par) { };
+
+	double operator[](const std::size_t i, const std::size_t j)
+	{ return lu_decomp[i, j]; };
+
+	double operator[](const std::size_t i, const std::size_t j) const
+	{ return lu_decomp[i, j]; };
+};
+
+struct matrix_info
+{
+	double determinant;
+	matrix inverse;
+	matrix transpose;
 };
 
 matrix operator+(const matrix&, const matrix&);
@@ -157,9 +181,9 @@ matrix operator-(const matrix&, const matrix&);
 matrix operator*(const matrix&, const matrix&);
 matrix operator*(const double, const matrix&);
 matrix operator*(const matrix&, const double);
-vector operator*(const matrix&, const vector);
+vector operator*(const matrix&, const vector&);
 matrix operator/(const matrix&, const double);
 bool operator==(const matrix&, const matrix&);
-void print(const matrix&);
+//void print(const matrix&);
 
 }

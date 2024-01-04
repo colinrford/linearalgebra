@@ -44,22 +44,23 @@ auto checkForExistingLUdcmp = [](Matrix& dis) {
 };
 */
 
-constexpr auto zeroVectorOfDim = [](const std::size_t d) {
+/*constexpr auto zero_vector_of_dim = [](const std::size_t d) {
 	vector v(d);
-	v[0] = 0;
+	for (const auto entry : v)
+		entry = 0.;
 	return v;
-};
+};*/
 
 // The basic constructor just creates an n x m identity matrix
-matrix::matrix(std::size_t n, std::size_t m)
+matrix::matrix(const std::size_t n, const std::size_t m)
 {
 	if (n == 0 || m == 0)
 		throw matrix_exception::non_pos();
 
 	n_rows = n;
 	m_columns = m;
-	auto rose = make_indexing_set(n_rows);
-	auto calls = make_indexing_set(m_columns);
+	const auto rose = make_indexing_set(n_rows);
+	const auto calls = make_indexing_set(m_columns);
 
 	matrix_ptr = make_matrix_unique(n, m);
 
@@ -71,7 +72,7 @@ matrix::matrix(std::size_t n, std::size_t m)
 				matrix_ptr[rho][xi] = 1.;
 }
 
-matrix::matrix(std::size_t n, std::size_t m,
+matrix::matrix(const std::size_t n, const std::size_t m,
 								std::unique_ptr<std::unique_ptr<double[]>[]> mtrx)
 								: matrix_ptr{std::move(mtrx)}
 {
@@ -88,7 +89,7 @@ matrix::matrix(const std::size_t n)
 		throw matrix_exception::non_pos();
 
 	n_rows = m_columns = n;
-	auto square = make_indexing_set(n_rows);
+	const auto square = make_indexing_set(n_rows);
 
 	matrix_ptr = make_matrix_unique(n, n);
 
@@ -100,7 +101,8 @@ matrix::matrix(const std::size_t n)
 				matrix_ptr[rho][xi] = 1.;
 }
 
-matrix::matrix(const std::size_t n, std::unique_ptr<std::unique_ptr<double[]>[]> mtrx)
+matrix::matrix(const std::size_t n,
+								std::unique_ptr<std::unique_ptr<double[]>[]> mtrx)
 								: matrix_ptr{std::move(mtrx)}
 {
 	if (n == 0)
@@ -109,14 +111,14 @@ matrix::matrix(const std::size_t n, std::unique_ptr<std::unique_ptr<double[]>[]>
 	n_rows = m_columns = n;
 }
 
-matrix::matrix(const std::vector<std::vector<double> > mtrx)
+matrix::matrix(const std::vector<std::vector<double>> mtrx)
 {
 	if (mtrx.empty())
 		throw matrix_exception::non_pos();
 	n_rows = mtrx.size();
 	m_columns = mtrx.front().size();
-	auto rose = make_indexing_set(n_rows);
-	auto calls = make_indexing_set(m_columns);
+	const auto rose = make_indexing_set(n_rows);
+	const auto calls = make_indexing_set(m_columns);
 
 	matrix_ptr = make_matrix_unique(rose.size(), calls.size());
 
@@ -148,24 +150,26 @@ matrix::matrix(const std::vector<double> diag)
 		throw matrix_exception::non_pos();
 	const std::size_t n = diag.size();
 	n_rows = m_columns = n;
-	auto square = make_indexing_set(n);
+	const auto square = make_indexing_set(n);
 
 	matrix_ptr = make_matrix_unique(n, n);
 
 	for (auto rho : square)
 		for (auto xi : square)
 			if (rho != xi)
-				matrix_ptr[rho][xi] = 0.0;
+				matrix_ptr[rho][xi] = 0.;
 			else
 				matrix_ptr[rho][xi] = diag[rho];
 }
 
-matrix::matrix(const vector diag)
+matrix::matrix(const vector& diag)
 {
-	const std::size_t n = diag.get_dimension();
-	auto square = make_indexing_set(n);
+	/*if (diag.empty())
+		throw matrix_exception::non_pos();*/ // no check atm, assume nice input
+	n_rows = m_columns = diag.size();
+	const auto square = make_indexing_set(n_rows);
 
-	matrix_ptr = make_matrix_unique(n, n);
+	matrix_ptr = make_matrix_unique(n_rows, n_rows);
 
 	for (auto rho : square)
 		for (auto xi : square)
@@ -180,13 +184,15 @@ matrix::matrix(matrix&& mtrx) noexcept
 				n_rows{mtrx.n_rows},
 				m_columns{mtrx.m_columns}
 {
-  //mtrx.n_rows = mtrx.m_columns = 0; unique_ptr.reset()?
+  mtrx.n_rows = mtrx.m_columns = 0; //unique_ptr.reset()?
 }
 
 
 matrix& matrix::operator=(matrix&& mtrx)
 {
 	this->matrix_ptr = std::move(mtrx.matrix_ptr);
+	this->n_rows = mtrx.n_rows;
+	this->m_columns = mtrx.m_columns;
 	return *this;
 }
 
@@ -203,6 +209,22 @@ auto matrix::operator[](const std::size_t index) const -> decltype(matrix_ptr[in
 {
 	if (index < this->get_num_rows())
 		return this->matrix_ptr[index];
+	else
+		throw matrix_exception::out_of_bounds();
+}
+
+double& matrix::operator[](const std::size_t i, const std::size_t j)
+{
+	if (i < this->get_num_rows() && j < this->get_num_columns())
+		return this->matrix_ptr[i][j];
+	else
+		throw matrix_exception::out_of_bounds();
+}
+
+double& matrix::operator[](const std::size_t i, const std::size_t j) const
+{
+	if (i < this->get_num_rows() && j < this->get_num_columns())
+		return this->matrix_ptr[i][j];
 	else
 		throw matrix_exception::out_of_bounds();
 }
@@ -264,10 +286,10 @@ matrix matrix::add(const matrix& m_2) const
 	if (!can_add(*this, m_2))
 		throw matrix_exception::add_not_def();
 
-	std::size_t numRows = this->get_num_rows();
-	std::size_t numColumns = this->get_num_columns();
-	auto rose = make_indexing_set(numRows);
-	auto calls = make_indexing_set(numColumns);
+	const std::size_t numRows = this->get_num_rows();
+	const std::size_t numColumns = this->get_num_columns();
+	const auto rose = make_indexing_set(numRows);
+	const auto calls = make_indexing_set(numColumns);
 
 	auto entries = make_matrix_unique(numRows, numColumns);
 
@@ -275,9 +297,7 @@ matrix matrix::add(const matrix& m_2) const
 		for (auto xi : calls)
 			entries[rho][xi] = this->matrix_ptr[rho][xi] + m_2.matrix_ptr[rho][xi];
 
-	matrix m1pm2(numRows, numColumns, std::move(entries));
-
-	return m1pm2;
+	return matrix(numRows, numColumns, std::move(entries));
 }
 
 matrix add(const matrix& m_1, const matrix& m_2) { return m_1.add(m_2); }
@@ -329,16 +349,16 @@ matrix matrix::multiply(const matrix& mp) const
 	assert(numColumnsNM == numRowsMP);
 	const std::size_t numColumnsMP = mp.get_num_columns();
 
-	auto rowsNP = make_indexing_set(numRowsNM);
-	auto columnsNP = make_indexing_set(numColumnsMP);
-	auto columnsNM = make_indexing_set(numColumnsNM);
+	const auto rowsNP = make_indexing_set(numRowsNM);
+	const auto columnsNP = make_indexing_set(numColumnsMP);
+	const auto columnsNM = make_indexing_set(numColumnsNM);
 
 	auto entries = make_matrix_unique(rowsNP.size(), columnsNP.size());
 
 	for (auto i : rowsNP)
 		for (auto j : columnsNP)
 			for (auto k : columnsNM)
-				entries[i][j] += this->matrix_ptr[i][k] * mp.matrix_ptr[k][j];
+				entries[i][j] += this->matrix_ptr[i][k] * mp[k, j];
 
 	return matrix(rowsNP.size(), columnsNP.size(), std::move(entries));
 }
@@ -347,14 +367,12 @@ matrix multiply(const matrix& nm, const matrix& mp)
 { return nm.multiply(mp); }
 
 // incomplete
-bool is_invertible(matrix& nm)
+bool is_invertible(const matrix& nm)
 {
 	if (!nm.is_square())
-	{
 		return false;
-	}
-	if (compare(0, nm.det()))
-		return false;
+	/*if (compare(0, nm.det()))
+		return false;*/
 
 	return true;
 }
@@ -365,8 +383,8 @@ matrix matrix::inverse()
 	if (!is_invertible(*this))
 		throw matrix_exception::not_inv();
 
-	std::size_t numRows = this->get_num_rows();
-	std::size_t numColumns = this->get_num_columns();
+	const std::size_t numRows = this->get_num_rows();
+	const std::size_t numColumns = this->get_num_columns();
 
 	auto entries = make_matrix_unique(numRows, numColumns);
 
@@ -412,7 +430,7 @@ bool matrix::croutLU()
 	const std::size_t n = this->get_num_rows();
 	double big;
 	double temp;
-	auto square = make_indexing_set(n);
+	const auto square = make_indexing_set(n);
 	vector perms(n);
 	vector implicitScalingPerRow(n);
 	auto lu = make_matrix_unique(n, n);
@@ -462,7 +480,7 @@ bool matrix::croutLU()
 		{
 			std::cout << "singular stuff goin on" << std::endl;
 			lu[k][k] = std::numeric_limits<double>::epsilon();
-		} // this line does not seem to behave quite right
+		} // this if statement does not seem to behave quite right
 		someIndices = make_indexing_set_starting_at(k + 1, n - (k + 1));
 		for (auto i : someIndices)
 		{
@@ -473,7 +491,7 @@ bool matrix::croutLU()
 	}
 	matrix lu_decomposition = matrix(n, std::move(lu));
 	LUdcmp lu_decomp(std::move(lu_decomposition), std::move(perms), parity);
-	this->lud = std::make_optional(std::make_unique<LUdcmp>(std::move(lu_decomp)));
+	this->lud = std::make_unique<LUdcmp>(std::move(lu_decomp));
 	return true;
 }
 
@@ -491,7 +509,7 @@ double matrix::croutLUDet()
 		auto diag = make_indexing_set(this->n_rows);
 
 		for (auto indx : diag)
-			dtrmnnt *= decomp->lu_decomp[indx][indx];
+			dtrmnnt *= decomp->lu_decomp[indx, indx];
 
 		return dtrmnnt;
 	}
@@ -512,7 +530,7 @@ vector matrix::croutLUSolveSystem(const vector& b)
 	int ip;
 	int n = b.get_dimension();
 	double sum = 0.0;
-	vector x = zeroVectorOfDim(n);
+	vector x = make_zero_vector(n);
 
 	matrix lu = 1 * decomp->lu_decomp;//!!!!!!!!!!!!!!!!!! copy ;0)
 	auto vecIndices = make_indexing_set(n);
@@ -552,9 +570,9 @@ vector matrix::croutLUSolveSystem(const vector& b)
 matrix matrix::croutLUSolveMatrixSystem(const matrix& B)
 {
 	const std::size_t numRowsA = this->get_num_rows();
-	int numColumnsA = this->get_num_columns();
-	int numRowsB = B.get_num_rows();
-	int numColumnsB = B.get_num_columns();
+	const int numColumnsA = this->get_num_columns();
+	const int numRowsB = B.get_num_rows();
+	const int numColumnsB = B.get_num_columns();
 
 	if (numRowsA != numRowsB || numColumnsA != numColumnsB)
 	{ // std::optional instead?
@@ -566,15 +584,15 @@ matrix matrix::croutLUSolveMatrixSystem(const matrix& B)
 	auto calls = make_indexing_set(numColumnsA);
 
 	matrix X(numRowsA, numColumnsA);
-	vector b = zeroVectorOfDim(numRowsA);
-	vector x = zeroVectorOfDim(numRowsA);
+	vector b = make_zero_vector(numRowsA);
+	vector x = make_zero_vector(numRowsA);
 	for (auto j : calls)
 	{
 		for (auto rho : rose)
 			b[rho] = B[rho][j];
 		x = std::move(croutLUSolveSystem(b));
 		for (auto rho : rose)
-			X[rho][j] = x[rho];
+			X[rho, j] = x[rho];
 	}
 
 	return X;
@@ -610,35 +628,34 @@ matrix matrix::croutLUInv()
 std::optional<LUdcmp> matrix::doolittleLU()
 {
 	const std::size_t n = this->get_num_rows();
-	auto square = make_indexing_set(n);
+	const auto square = make_indexing_set(n);
 	auto lu = make_matrix_unique(n, n);
 
-	for (int k : square)
+	for (auto k : square)
 	{
-		auto subsq = make_indexing_set(k + 1);
-		auto subsqc = make_indexing_set_starting_at(k, n - k);
-		auto subsqcpo = make_indexing_set_starting_at(k + 1, n - (k + 1));
-    for (int j : subsqc)//(int j = k; j < n; ++j)
+		const auto subsq = make_indexing_set(k + 1);
+		const auto subsqc = make_indexing_set_starting_at(k, n - k);
+		const auto subsqcpo = make_indexing_set_starting_at(k + 1, n - (k + 1));
+    for (auto j : subsqc)//(int j = k; j < n; ++j)
 		{
       double sum = 0.0;
-      for (int p : subsq)
+      for (auto p : subsq)
 				sum += lu[k][p] * lu[p][j];
       lu[k][j] = this->matrix_ptr[k][j] - sum;
     }
-    for (int i : subsqcpo)//(int i = k + 1; i < n; ++i)
+    for (auto i : subsqcpo)//(int i = k + 1; i < n; ++i)
 		{
     	double sum = 0.0;
-    	for (int p : subsq)
+    	for (auto p : subsq)
 				sum += lu[i][p] * lu[p][k];
     	lu[i][k] = (this->matrix_ptr[i][k] - sum) / lu[k][k];
     }
 	}
 	matrix lu_decomposition(n, std::move(lu));
-	vector perms = zeroVectorOfDim(n);
+	vector perms = make_zero_vector(n);
 	int parity = 0;
 
-	LUdcmp lu_decomp(std::move(lu_decomposition), std::move(perms), parity);
-	return lu_decomp;
+	return LUdcmp(std::move(lu_decomposition), std::move(perms), parity);
 }
 
 //incomplete possibly may need permutation info too?
@@ -683,66 +700,83 @@ bool matrix::equals(const matrix& m_2) const
 
   for (auto rho : rose)
   	for (auto xi : calls)
-    	if (!compare(this->matrix_ptr[rho][xi], m_2.matrix_ptr[rho][xi]))
+    	if (!compare(this->matrix_ptr[rho][xi], m_2[rho, xi]))
      		return false;
 
   return true;
 }
 
-matrix operator+(const matrix& m_1, const matrix& m_2) { return add(m_1, m_2); }
+matrix operator+(const matrix& m_1, const matrix& m_2)
+{ return add(m_1, m_2); }
 
-matrix operator-(const matrix& m_1, const matrix& m_2) { return subtract(m_1, m_2); }
+matrix operator-(const matrix& m_1, const matrix& m_2)
+{ return subtract(m_1, m_2); }
 
 matrix operator*(const matrix& m_1, const matrix& m_2)
 { return multiply(m_1, m_2); }
 
 matrix operator*(const matrix& m, const double d)
 {
-	std::size_t numRows = m.get_num_rows();
-	std::size_t numColumns = m.get_num_columns();
-	auto rose = make_indexing_set(numRows);
-	auto calls = make_indexing_set(numColumns);
+	const std::size_t numRows = m.get_num_rows();
+	const std::size_t numColumns = m.get_num_columns();
+	const auto rose = make_indexing_set(numRows);
+	const auto calls = make_indexing_set(numColumns);
 
-	auto md = make_matrix_unique(numRows, numColumns);
+	auto md = matrix(numRows, numColumns);
 
 	for (auto rho : rose)
 		for (auto xi : calls)
-			md[rho][xi] = m[rho][xi] * d;
+			md[rho, xi] = m[rho, xi] * d;
 
-	matrix mtd(numRows, numColumns, std::move(md));
-
-	return mtd;
+	return md;
 }
 
 matrix operator*(const double d, const matrix& m)
 {
-	std::size_t numRows = m.get_num_rows();
-	std::size_t numColumns = m.get_num_columns();
-	auto rose = make_indexing_set(numRows);
-	auto calls = make_indexing_set(numColumns);
+	const std::size_t numRows = m.get_num_rows();
+	const std::size_t numColumns = m.get_num_columns();
+	const auto rose = make_indexing_set(numRows);
+	const auto calls = make_indexing_set(numColumns);
 
-	auto md = make_matrix_unique(numRows, numColumns);
+	auto md = matrix(numRows, numColumns);
 	for (auto rho : rose)
 		for (auto xi : calls)
-			md[rho][xi] = d * m[rho][xi];
+			md[rho, xi] = d * m[rho, xi];
 
-	return matrix(numRows, numColumns, std::move(md));
+	return md;
+}
+
+vector operator*(const vector& x, const matrix& A)
+{
+	const std::size_t numRows = A.get_num_rows();
+	const std::size_t numColumns = A.get_num_columns();
+	//if (numRows != x.get_dimension())
+	//auto indices = make_indexing_set(dim);
+	const auto rose = make_indexing_set(numRows);
+	const auto calls = make_indexing_set(numColumns);
+	vector b = make_zero_vector(numRows);
+
+	for (auto rho : rose)
+		for (auto xi : calls)
+			b[rho] += x[rho] * A[rho, xi];
+
+	return b;
 }
 
 vector operator*(const matrix& A, const vector& x)
 {
-	std::size_t numRows = A.get_num_rows();
-	std::size_t numColumns = A.get_num_columns();
+	const std::size_t numRows = A.get_num_rows();
+	const std::size_t numColumns = A.get_num_columns();
 	assert(numColumns == x.get_dimension());
 	//if (numColumns != x.get_dimension())
 	//auto indices = make_indexing_set(dim);
-	auto rose = make_indexing_set(numRows);
-	auto calls = make_indexing_set(numColumns);
-	vector b = zeroVectorOfDim(numRows);
+	const auto rose = make_indexing_set(numRows);
+	const auto calls = make_indexing_set(numColumns);
+	vector b = make_zero_vector(numRows);
 
 	for (auto rho : rose)
 		for (auto xi : calls)
-			b[rho] += A[rho][xi] * x[xi];
+			b[rho] += A[rho, xi] * x[xi];
 
 	return b;
 }
