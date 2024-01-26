@@ -18,39 +18,48 @@ namespace linalg
   }; //this may actually be too slow to use, sadly*/
 
 vector::vector(const std::size_t dim)
+      : dimension{dim}
 {
   if (dim != 0)
   {
-    dimension = dim;
     arrow = std::make_unique<double[]>(dimension);
-    for (std::size_t i = 0; i < dimension; i++)
-      if (i != 0)
-        arrow[i] = 0.;
-      else
-        arrow[i] = 1.;
   } else  throw vector_exception::non_pos();
 }
 
 // dangerous, now a private constructor
 vector::vector(const std::size_t dim, std::unique_ptr<double[]> elem)
+      : dimension{dim}
 {
   if (elem == nullptr)
     throw vector_exception::null_construction();
   if (dim == 0)
     throw vector_exception::non_pos();
-  dimension = dim;
   arrow = std::move(elem);
 }
 
 vector::vector(const std::vector<double> elem)
+      : dimension{elem.size()}
 {
-  dimension = elem.size();
   if (dimension > 0)
   {
     arrow = std::make_unique<double[]>(dimension);
     for (std::size_t i = 0; i < dimension; i++)
       arrow[i] = elem[i];
   } else  throw vector_exception::non_pos();
+}
+
+vector::vector(const std::initializer_list<double> il)
+      : dimension{il.size()}
+{
+  if (il.size() == 0)
+    throw vector_exception::non_pos();
+  arrow = std::make_unique<double[]>(il.size());
+  auto arrow_ptr = arrow.get();
+  for (auto entry : il)
+  {
+    *arrow_ptr = entry;
+    arrow_ptr++;
+  }
 }
 
 vector::vector(vector&& v) noexcept
@@ -60,7 +69,7 @@ vector::vector(vector&& v) noexcept
   v.dimension = 0;
 }
 
-vector& vector::operator=(vector&& v)
+vector& vector::operator=(vector&& v) noexcept
 {
   this->arrow = std::move(v.arrow);
   this->dimension = v.dimension;
@@ -81,6 +90,24 @@ auto vector::operator[](const std::size_t index) const
                       -> decltype(arrow[index])
 {
   if (index < this->dimension)
+    return arrow[index];
+  else
+    throw vector_exception::out_of_bounds();
+}
+
+auto vector::operator[](const int index)
+                      -> decltype(arrow[index])
+{
+  if (0 <= index < this->dimension)
+    return arrow[index];
+  else
+    throw vector_exception::out_of_bounds();
+}
+
+auto vector::operator[](const int index) const
+                      -> decltype(arrow[index])
+{
+  if (0 <= index < this->dimension)
     return arrow[index];
   else
     throw vector_exception::out_of_bounds();
@@ -333,14 +360,17 @@ vector& vector::operator+=(const vector& v2)
   if (d1 == d2)
   {
     for (std::size_t i = 0; i < d1; i++)
+    {
+      std::cout << "v2.arrow[" << i << "] = " << v2.arrow[i] << std::endl;
       this->arrow[i] += v2.arrow[i];
+    }
     return *this;
   } else  throw vector_exception::plus_equals_unequal_dim();
 }
 
 vector operator+(const vector& v1, const vector& v2) { return v1.add(v2); }
 
-vector operator+(const vector v1, const vector v2) { return v1.add(v2); }
+//vector operator+(const vector v1, const vector v2) { return v1.add(v2); }
 
 vector operator-(const vector& v1, const vector& v2) { return v1.subtract(v2); }
 
@@ -610,18 +640,7 @@ const vector::const_iterator vector::cend() const
  */
 
  vector make_zero_vector(const std::size_t dim)
- {
-   /*auto elem = std::make_unique<double[]>(dim);
-
-   std::fill(elem.get(), elem.get() + dim, 0.);
-
-   return vector(dim, std::move(elem));*/
-   auto zero_vec = vector(dim);
-
-   //std::fill(zero_vec.begin(), zero_vec.end(), 0.);
-
-   return zero_vec;
- }
+ { return vector(dim); }
 
 void vector::print() const
 {

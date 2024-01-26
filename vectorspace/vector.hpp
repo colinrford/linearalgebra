@@ -1,5 +1,6 @@
 
 #include <cmath>
+#include <initializer_list>
 #include <iostream>
 #include <exception>
 #include <limits>
@@ -70,17 +71,23 @@ class vector {
 
     vector(const std::size_t);
 
+    vector(const std::initializer_list<double>);
+
     vector(const std::vector<double>);
 
     vector(vector&&) noexcept;
 
-    vector& operator=(vector&&);
+    vector& operator=(vector&&) noexcept;
 
     //const auto operator[](const std::size_t index) const -> decltype(arrow[index]);
 
     auto operator[](const std::size_t index) -> decltype(arrow[index]);
 
     auto operator[](const std::size_t index) const -> decltype(arrow[index]);
+
+    auto operator[](const int index) -> decltype(arrow[index]);
+
+    auto operator[](const int index) const -> decltype(arrow[index]);
 
     //[[nodiscard]] constexpr bool empty() const noexcept; // copying stdlib
 
@@ -155,7 +162,7 @@ class vector {
     const const_iterator cbegin() const;
 
     const const_iterator cend() const;
-};  // end class vector 
+};  // end class vector
 
 struct vector_info
 {
@@ -186,5 +193,13 @@ constexpr bool compare(const double a, const double b)
   else
     return false;
 }
+
+/*bool compare(const double a, const double b, const double epsilon)
+{
+  if (abs(b - a) < epsilon)
+    return true;
+  else
+    return false;
+}*/
 
 } // end namespace linalg
