@@ -30,3 +30,6 @@
 # misc
 *.dSYM
 .DS_Store
+*.plist
+*.tmp
+gcm.cache/

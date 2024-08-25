@@ -44,7 +44,8 @@ struct vector_exception : public std::exception {
   };
   struct plus_equals_unequal_dim : public std::exception {
     const char* what () const throw () {
-      return "operator+= is more restricted than others, it requires the vectors have equal dimension.\n";
+      return "operator+= is more restricted than others, it requires the \
+              vectors have equal dimension.\n";
     }
   };
 };
@@ -82,57 +83,50 @@ class vector {
     //const auto operator[](const std::size_t index) const -> decltype(arrow[index]);
 
     auto operator[](const std::size_t index) -> decltype(arrow[index]);
-
     auto operator[](const std::size_t index) const -> decltype(arrow[index]);
-
+    /*
     auto operator[](const int index) -> decltype(arrow[index]);
-
     auto operator[](const int index) const -> decltype(arrow[index]);
-
+    */
     //[[nodiscard]] constexpr bool empty() const noexcept; // copying stdlib
 
     constexpr std::size_t get_dimension() const { return dimension; }
-
     constexpr std::size_t size() const { return dimension; }
-
     constexpr std::size_t length() const { return dimension; }
 
     void give_label(std::string);
-
     void give_label(std::string_view);
 
     std::string_view get_label() const;
-
     std::string_view name() const;
 
     void compute_info();
 
     double* get() const;
-
     double* get_arrow() const;
 
-    double mag();
+    double dot(const vector&) const;
+    double better_dot(const vector&) const;
+    double even_better_dot(const vector&) const;
 
+    double mag();
     double mag() const;
 
     double mag2();
-
     double mag2() const;
 
     double norm();
-
     double norm() const;
 
     double norm2();
-
     double norm2() const;
 
-    double dot(const vector&) const;
+    double pnorm(const double) const;
+    double lpnorm(const double) const;
 
     vector cross(const vector&) const;
 
     vector add(const vector&) const;
-
     vector subtract(const vector&) const;
 
     vector scalar(const double) const;
@@ -145,22 +139,17 @@ class vector {
 
     void print() const;
 
-    ~vector() = default;
+    ~vector();// = default;
 
     struct iterator;
-
     iterator begin();
-
     iterator end();
 
     struct const_iterator;
-
     const_iterator begin() const;
-
     const_iterator end() const;
 
     const const_iterator cbegin() const;
-
     const const_iterator cend() const;
 };  // end class vector
 
@@ -168,11 +157,8 @@ struct vector_info
 {
   double norm;
   double norm_squared;
-  constexpr vector_info(double n, double n2)
-  { //gcc figures this out but clang does not
-    norm = n;
-    norm_squared = n2;
-  }
+  constexpr vector_info(double n, double n2) : norm(n), norm_squared(n2)
+  { }
 };
 
 vector make_zero_vector(const std::size_t);
@@ -186,7 +172,7 @@ bool operator==(const vector&, const vector&);
 
 constexpr bool compare(const double a, const double b)
 {
-  constexpr double epsilon = std::numeric_limits<double>::epsilon();
+  constexpr double epsilon = 4 * std::numeric_limits<double>::epsilon();
 
   if (abs(b - a) < epsilon)
     return true;

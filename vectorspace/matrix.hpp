@@ -71,6 +71,8 @@ class matrix {
 		matrix(const std::size_t n,
 						std::unique_ptr<std::unique_ptr<double[]>[]> mtrx);
 
+
+
 	public:
 
 		matrix(const std::size_t n, const std::size_t m);
@@ -102,6 +104,26 @@ class matrix {
 		std::size_t get_num_columns() const;
 
 		double get_entry(const std::size_t i, const std::size_t j) const;
+
+		struct row_iterator;
+		constexpr row_iterator row_begin();
+		constexpr row_iterator row_end();
+
+		struct row_major_iterator;
+		constexpr row_major_iterator row_major_begin();
+		constexpr row_major_iterator row_major_end();
+
+		struct column_iterator;
+		constexpr column_iterator column_begin();
+		constexpr column_iterator column_end();
+		constexpr column_iterator col_begin();
+		constexpr column_iterator col_end();
+
+		struct column_major_iterator;
+		constexpr column_major_iterator column_major_begin();
+		constexpr column_major_iterator column_major_end();
+		constexpr column_major_iterator col_major_begin();
+		constexpr column_major_iterator col_major_end();
 
 		//double** getmatrix();
 
@@ -141,7 +163,7 @@ class matrix {
 
 		void writeTeXto(std::string);
 
-		~matrix() = default;
+		~matrix() = default; // does this not work?
 
 		struct iterator;
 

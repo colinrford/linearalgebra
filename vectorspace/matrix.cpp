@@ -1,5 +1,6 @@
 
 #include "matrix.hpp"
+#include <cstdint>
 #include <ranges>
 #include <iostream>
 
@@ -205,7 +206,8 @@ auto matrix::operator[](const std::size_t index) -> decltype(matrix_ptr[index])
 		throw matrix_exception::out_of_bounds();
 }
 
-auto matrix::operator[](const std::size_t index) const -> decltype(matrix_ptr[index])
+auto matrix::operator[](const std::size_t index) const
+																								 -> decltype(matrix_ptr[index])
 {
 	if (index < this->get_num_rows())
 		return this->matrix_ptr[index];
@@ -266,6 +268,462 @@ double matrix::get_entry(const std::size_t i, const std::size_t j) const
 	else
 		throw matrix_exception::out_of_bounds();
 }
+
+/*
+ *  iterator implementation
+ */
+
+struct matrix::row_iterator
+{
+public:
+	using value_type = std::unique_ptr<double[]>;
+	using size_type = std::size_t;
+  using difference_type = std::ptrdiff_t;
+  using pointer = std::unique_ptr<double[]>*;
+  using reference = std::unique_ptr<double[]>&;
+  using iterator_category = std::random_access_iterator_tag;
+	// does not actually compile with random_access std::algorithms as of 2/29/24
+	// seems to qualify as, and work with, bidirectional std::algorithms
+
+public:
+
+	constexpr row_iterator() noexcept = default;
+
+	constexpr row_iterator(pointer row_ptr, uint64_t ri) noexcept
+	{
+		iter_ptr = row_ptr;
+		row_index = ri;
+	}
+
+	constexpr pointer operator->() noexcept { return iter_ptr; }
+
+  constexpr reference operator*() noexcept { return *iter_ptr; }
+
+  constexpr reference operator[](difference_type& index)
+  { return *(iter_ptr + index); } // doesn't work
+
+  constexpr row_iterator& operator++()
+  {
+		++row_index;
+    ++iter_ptr;
+    return *this;
+  }
+
+  constexpr row_iterator operator++(int)
+  {
+    auto iter = *this;
+    ++(*this);
+    return iter;
+  }
+
+  constexpr row_iterator& operator--()
+  {
+		--row_index;
+    --iter_ptr;
+    return *this;
+  }
+
+  constexpr row_iterator operator--(int)
+  {
+    auto iter = *this;
+    --(*this);
+    return iter;
+  }
+
+  constexpr row_iterator& operator+=(int off)
+  {
+    iter_ptr += off;
+    return *this;
+  }
+
+  constexpr row_iterator operator+(difference_type& off)
+  {
+    auto iter = *this;
+    return iter += off;// return iterator(iter + off);// based off gcc stl impl
+  }
+
+  constexpr row_iterator& operator-=(int off)
+	{ return *this += -off; }
+
+  constexpr row_iterator operator-(difference_type& off)
+  {
+    auto iter = *this;
+    return iter -= off;
+  }
+
+  constexpr bool operator==(const row_iterator& other) const noexcept
+  { return iter_ptr == other.iter_ptr; }
+
+  constexpr bool operator!=(const row_iterator& other) const noexcept
+  { return iter_ptr != other.iter_ptr; } // should it be !( == )?
+
+  constexpr bool operator<(row_iterator other) const noexcept
+  { return iter_ptr < other.iter_ptr; }
+
+  constexpr bool operator>(row_iterator other) const noexcept
+  { return iter_ptr > other.iter_ptr; }
+
+  constexpr bool operator<=(row_iterator other) const noexcept
+  { return iter_ptr <= other.iter_ptr; }
+
+  constexpr bool operator>=(row_iterator other) const noexcept
+  { return iter_ptr >= other.iter_ptr; }
+
+  constexpr difference_type operator-(row_iterator other) const noexcept
+  { return iter_ptr - other.iter_ptr; }
+
+  constexpr friend auto operator<=>(row_iterator, row_iterator) = default;
+
+	/*
+  constexpr friend difference_type operator-(row_iterator first,
+																						 row_iterator second)
+  { return first - second; } // are
+
+  constexpr friend row_iterator operator+(row_iterator it, int off)
+  { return it += off; } // these
+
+  constexpr friend row_iterator operator-(row_iterator it, int off)
+  { return it -= off; } // okay? sure */
+	friend struct row_major_iterator;
+	friend struct column_major_iterator;
+
+private:
+	pointer iter_ptr;
+	uint64_t row_index;
+};
+
+constexpr matrix::row_iterator matrix::row_begin()
+{ return row_iterator(matrix_ptr.get(), 0); }
+
+constexpr matrix::row_iterator matrix::row_end()
+{ return row_iterator(matrix_ptr.get() + n_rows, n_rows); }
+
+constexpr matrix::row_iterator row_begin(matrix& m)
+{ return m.row_begin(); }
+
+constexpr matrix::row_iterator row_end(matrix& m)
+{ return m.row_end(); }
+
+
+struct matrix::row_major_iterator
+{
+public:
+
+  using value_type = double;
+  using difference_type = std::ptrdiff_t;
+  using pointer = double*;
+  using reference = double&;
+  using iterator_category = std::random_access_iterator_tag;
+
+public:
+
+  constexpr row_major_iterator() noexcept = default;
+
+  constexpr row_major_iterator(pointer mtrx_ptr,
+															 row_iterator rit,
+														 	 matrix* which_matrix,
+														 	 uint64_t ci) noexcept
+							: current_row{rit},
+								this_matrix{which_matrix}
+	{
+		iter_ptr = mtrx_ptr;
+		col_index = ci;
+	}
+
+  constexpr pointer operator->() noexcept { return iter_ptr; }
+
+  constexpr reference operator*() noexcept { return *iter_ptr; }
+
+  constexpr reference operator[](difference_type index)
+  {
+		return *(iter_ptr + index);
+	} // should this exist??
+
+	//rough stuff
+  constexpr row_major_iterator& operator++()
+  {
+		++col_index;
+		if (col_index < this_matrix->m_columns)
+    	++iter_ptr;
+		else
+		{
+			++current_row;
+			if (current_row.row_index < this_matrix->n_rows)
+			{
+				iter_ptr = current_row->get();
+				col_index = 0;
+			} else
+				*this = this_matrix->row_major_end();
+		}
+    return *this;
+  } //end rough stuff (haha just kidding)
+
+  constexpr row_major_iterator operator++(int)
+  {
+    auto iter = *this;
+    ++(*this);
+    return iter;
+  }
+
+  constexpr row_major_iterator& operator--()
+  {
+		if (col_index != 0)
+		{
+			--col_index;
+			--iter_ptr;
+		}
+		else
+		{
+			if (current_row.row_index != 0)
+			{
+				--current_row;
+				col_index = this_matrix->m_columns - 1;
+				iter_ptr = current_row->get() + col_index;
+			} else
+				*this = this_matrix->row_major_begin();
+		}
+		--current_row;
+    return *this;
+  } // alas
+
+  constexpr row_major_iterator operator--(int)
+  {
+    auto iter = *this;
+    --(*this);
+    return iter;
+  }
+
+  constexpr row_major_iterator& operator+=(int off)
+  {
+    iter_ptr += off;
+    return *this;
+  }
+
+  constexpr row_major_iterator operator+(difference_type& off)
+  {
+    auto iter = *this;
+    return iter += off;// return iterator(iter + off);// based off gcc stl impl
+  }
+
+  constexpr row_major_iterator& operator-=(int off)
+	{ return *this += -off; }
+
+  constexpr row_major_iterator operator-(difference_type& off)
+  {
+    auto iter = *this;
+    return iter -= off;
+  }
+
+  constexpr bool operator==(const row_major_iterator& other) const noexcept
+  { return iter_ptr == other.iter_ptr; }
+
+  constexpr bool operator!=(const row_major_iterator& other) const noexcept
+  { return iter_ptr != other.iter_ptr; } // should it be !( == )?
+
+  constexpr bool operator<(row_major_iterator other) const noexcept
+  { return iter_ptr < other.iter_ptr; }
+
+  constexpr bool operator>(row_major_iterator other) const noexcept
+  { return iter_ptr > other.iter_ptr; }
+
+  constexpr bool operator<=(row_major_iterator other) const noexcept
+  { return iter_ptr <= other.iter_ptr; }
+
+  constexpr bool operator>=(row_major_iterator other) const noexcept
+  { return iter_ptr >= other.iter_ptr; }
+
+  constexpr difference_type operator-(row_major_iterator other) const noexcept
+  { return iter_ptr - other.iter_ptr; }
+
+  constexpr friend auto operator<=>(row_major_iterator,
+																		row_major_iterator) = default;
+
+  constexpr friend difference_type operator-(row_major_iterator first,
+																						 row_major_iterator second)
+  { return *first - *second; } // are
+
+  constexpr friend row_major_iterator operator+(row_major_iterator it, int off)
+  { return it += off; } // these
+
+  constexpr friend row_major_iterator operator-(row_major_iterator it, int off)
+  { return it -= off; } // okay? sure
+
+  //friend iterator operator+(int off, iterator);
+
+private:
+  pointer iter_ptr;
+	matrix* this_matrix;
+	row_iterator current_row;
+	uint64_t col_index;
+};
+
+constexpr matrix::row_major_iterator matrix::row_major_begin()
+{ return row_major_iterator(matrix_ptr.get()->get(), row_begin(), this, 0); }
+
+constexpr matrix::row_major_iterator matrix::row_major_end()
+{
+	return row_major_iterator((matrix_ptr.get() + n_rows - 1)->get()
+																											 + m_columns,
+														 row_end(),
+													 	 this,
+													 	 this->m_columns);
+}
+
+matrix::row_major_iterator row_major_begin(matrix& m)
+{ return m.row_major_begin(); }
+
+matrix::row_major_iterator row_major_end(matrix& m)
+{ return m.row_major_end(); }
+
+// column_iterator is probably defunct
+struct matrix::column_major_iterator
+{
+public:
+	using value_type = double;
+  using difference_type = std::ptrdiff_t;
+  using pointer = double*;
+  using reference = double&;
+  using iterator_category = std::random_access_iterator_tag;
+
+public:
+
+	constexpr column_major_iterator() noexcept = default;
+
+	constexpr column_major_iterator(pointer row_ptr,
+																	matrix* which_matrix,
+																	row_iterator row_tracker) noexcept
+							: this_matrix{which_matrix},
+								current_row{row_tracker}
+	{
+		iter_ptr = row_ptr;
+		col_index = 0;
+	}
+
+	constexpr pointer operator->() noexcept { return iter_ptr; }
+
+  constexpr reference operator*() noexcept { return *iter_ptr; }
+
+  constexpr reference operator[](difference_type index)
+  { return *(iter_ptr + index); }
+
+  constexpr column_major_iterator& operator++()
+  {
+		++col_index;
+		if (col_index < this_matrix->m_columns)
+			++iter_ptr;
+		else
+			*this = this_matrix->column_major_end();
+    return *this;
+  }
+
+  constexpr column_major_iterator operator++(int)
+  {
+    auto iter = *this;
+    ++(*this);
+    return iter;
+  }
+
+  constexpr column_major_iterator& operator--()
+  {
+		--col_index;
+    --iter_ptr;
+    return *this;
+  }
+
+  constexpr column_major_iterator operator--(int)
+  {
+    auto iter = *this;
+    --(*this);
+    return iter;
+  }
+
+  constexpr column_major_iterator& operator+=(int off)
+  {
+    iter_ptr += off;
+    return *this;
+  }
+
+  constexpr column_major_iterator operator+(difference_type& off)
+  {
+    auto iter = *this;
+    return iter += off;// return iterator(iter + off);// based off gcc stl impl
+  }
+
+  constexpr column_major_iterator& operator-=(int off)
+	{ return *this += -off; }
+
+  constexpr column_major_iterator operator-(difference_type& off)
+  {
+    auto iter = *this;
+    return iter -= off;
+  }
+
+  constexpr bool operator==(const column_major_iterator& other) const noexcept
+  { return iter_ptr == other.iter_ptr; }
+
+  constexpr bool operator!=(const column_major_iterator& other) const noexcept
+  { return iter_ptr != other.iter_ptr; } // should it be !( == )?
+
+  constexpr bool operator<(column_major_iterator other) const noexcept
+  { return iter_ptr < other.iter_ptr; }
+
+  constexpr bool operator>(column_major_iterator other) const noexcept
+  { return iter_ptr > other.iter_ptr; }
+
+  constexpr bool operator<=(column_major_iterator other) const noexcept
+  { return iter_ptr <= other.iter_ptr; }
+
+  constexpr bool operator>=(column_major_iterator other) const noexcept
+  { return iter_ptr >= other.iter_ptr; }
+
+  constexpr difference_type
+	operator-(column_major_iterator other) const noexcept
+  { return iter_ptr - other.iter_ptr; }
+
+  constexpr friend auto operator<=>(column_major_iterator,
+																		column_major_iterator) = default;
+
+	/*
+  constexpr friend difference_type operator-(row_iterator first,
+																						 row_iterator second)
+  { return first - second; } // are
+
+  constexpr friend row_iterator operator+(row_iterator it, int off)
+  { return it += off; } // these
+
+  constexpr friend row_iterator operator-(row_iterator it, int off)
+  { return it -= off; } // okay? sure */
+	//friend struct column_major_iterator;
+
+private:
+	pointer iter_ptr;
+	matrix* this_matrix;
+	row_iterator current_row;
+	uint64_t col_index;
+};
+
+constexpr matrix::column_major_iterator matrix::column_major_begin()
+{
+	return column_major_iterator(matrix_ptr.get()->get(),
+															 this,
+															 this->row_begin());
+}
+
+constexpr matrix::column_major_iterator matrix::column_major_end()
+{
+	return column_major_iterator((matrix_ptr.get() + n_rows - 1)->get()
+																								 + m_columns,
+																this,
+																this->row_end());
+}
+
+constexpr matrix::column_major_iterator column_major_begin(matrix& m)
+{ return m.column_major_begin(); }
+
+constexpr matrix::column_major_iterator column_major_end(matrix& m)
+{ return m.column_major_end(); }
+
+/* END ITERATOR IMPLEMENTATION */
 
 bool can_add(const matrix& m_1, const matrix& m_2)
 {

@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <chrono>
 #include <compare>
+#include <execution>
 #include <iterator>
 #include <ranges>
 #include <utility>
@@ -11,7 +12,8 @@
 namespace linalg
 {
 
-  /*auto make_indexing_set = [](const std::size_t n) -> std::list<std::size_t> {
+  /*auto make_indexing_set = [](const std::size_t n) -> std::list<std::size_t>
+  {
   	std::list<std::size_t> ell(n);
   	std::iota(ell.begin(), ell.end(), 0);
   	return ell;
@@ -20,7 +22,7 @@ namespace linalg
 vector::vector(const std::size_t dim)
       : dimension{dim}
 {
-  if (dim != 0)
+  if (dim != 0) [[likely]]
   {
     arrow = std::make_unique<double[]>(dimension);
   } else  throw vector_exception::non_pos();
@@ -30,9 +32,9 @@ vector::vector(const std::size_t dim)
 vector::vector(const std::size_t dim, std::unique_ptr<double[]> elem)
       : dimension{dim}
 {
-  if (elem == nullptr)
+  if (elem == nullptr) [[unlikely]]
     throw vector_exception::null_construction();
-  if (dim == 0)
+  if (dim == 0) [[unlikely]]
     throw vector_exception::non_pos();
   arrow = std::move(elem);
 }
@@ -40,7 +42,7 @@ vector::vector(const std::size_t dim, std::unique_ptr<double[]> elem)
 vector::vector(const std::vector<double> elem)
       : dimension{elem.size()}
 {
-  if (dimension > 0)
+  if (dimension > 0) [[likely]]
   {
     arrow = std::make_unique<double[]>(dimension);
     for (std::size_t i = 0; i < dimension; i++)
@@ -51,7 +53,7 @@ vector::vector(const std::vector<double> elem)
 vector::vector(const std::initializer_list<double> il)
       : dimension{il.size()}
 {
-  if (il.size() == 0)
+  if (il.size() == 0) [[unlikely]]
     throw vector_exception::non_pos();
   arrow = std::make_unique<double[]>(il.size());
   auto arrow_ptr = arrow.get();
@@ -95,6 +97,10 @@ auto vector::operator[](const std::size_t index) const
     throw vector_exception::out_of_bounds();
 }
 
+vector::~vector() = default;
+
+/*
+// not sure why i have these besides having triple comparison for the hekovit
 auto vector::operator[](const int index)
                       -> decltype(arrow[index])
 {
@@ -103,7 +109,7 @@ auto vector::operator[](const int index)
   else
     throw vector_exception::out_of_bounds();
 }
-
+// not sure why i have these besides having triple comparison for the hekovit
 auto vector::operator[](const int index) const
                       -> decltype(arrow[index])
 {
@@ -111,7 +117,255 @@ auto vector::operator[](const int index) const
     return arrow[index];
   else
     throw vector_exception::out_of_bounds();
-}
+} */
+
+/*
+ *  iterator implementation
+ */
+struct vector::iterator
+{
+public:
+
+  using value_type = double;
+  using difference_type = std::ptrdiff_t;
+  using pointer = double*;
+  using reference = double&;
+  using iterator_category = std::random_access_iterator_tag;
+
+public:
+
+  constexpr iterator() noexcept = default;
+
+  constexpr iterator(pointer arrow_ptr) noexcept { iter_ptr = arrow_ptr; }
+
+  constexpr pointer operator->() noexcept { return iter_ptr; }
+
+  constexpr reference operator*() noexcept { return *iter_ptr; }
+
+  constexpr reference operator[](difference_type index)
+  { return *(iter_ptr + index); }
+
+  constexpr iterator& operator++()
+  {
+    ++iter_ptr;
+    return *this;
+  }
+
+  constexpr iterator operator++(int)
+  {
+    auto iter = *this;
+    ++(*this);
+    return iter;
+  }
+
+  constexpr iterator& operator--()
+  {
+    --iter_ptr;
+    return *this;
+  }
+
+  constexpr iterator operator--(int)
+  {
+    auto iter = *this;
+    --(*this);
+    return iter;
+  }
+
+  constexpr iterator& operator+=(int off)
+  {
+    iter_ptr += off;
+    return *this;
+  }
+
+  constexpr iterator operator+(difference_type& off)
+  {
+    auto iter = *this;
+    return iter += off;// return iterator(iter + off);// based off gcc stl impl
+  }
+
+  constexpr iterator& operator-=(int off) { return *this += -off; }
+
+  constexpr iterator operator-(difference_type& off)
+  {
+    auto iter = *this;
+    return iter -= off;
+  }
+
+  constexpr bool operator==(const iterator& other) const noexcept
+  { return iter_ptr == other.iter_ptr; }
+
+  constexpr bool operator!=(const iterator& other) const noexcept
+  { return iter_ptr != other.iter_ptr; } // should it be !( == )?
+
+  constexpr bool operator<(iterator other) const noexcept
+  { return iter_ptr < other.iter_ptr; }
+
+  constexpr bool operator>(iterator other) const noexcept
+  { return iter_ptr > other.iter_ptr; }
+
+  constexpr bool operator<=(iterator other) const noexcept
+  { return iter_ptr <= other.iter_ptr; }
+
+  constexpr bool operator>=(iterator other) const noexcept
+  { return iter_ptr >= other.iter_ptr; }
+
+  constexpr difference_type operator-(iterator other) const noexcept
+  { return iter_ptr - other.iter_ptr; }
+
+  constexpr friend auto operator <=>(iterator, iterator) = default;
+
+  /*\constexpr friend difference_type operator-(iterator first, iterator second)
+  { return *first - *second; }*/ // are
+
+  constexpr friend iterator operator+(iterator it, int off)
+  { return it += off; } // these
+
+  constexpr friend iterator operator-(iterator it, int off)
+  { return it -= off; } // okay? sure
+
+  //friend iterator operator+(int off, iterator);
+
+private:
+  pointer iter_ptr;
+};
+
+vector::iterator vector::begin() { return vector::iterator(arrow.get()); }
+
+vector::iterator vector::end()
+{ return vector::iterator(arrow.get() + dimension); }
+
+vector::iterator begin(vector& v) { return v.begin(); }
+
+vector::iterator end(vector& v) { return v.end(); }
+/*
+ *    END iterator  *
+ */
+
+/*
+*    BEGIN const_iterator    *
+*/
+struct vector::const_iterator
+{
+public:
+
+ using value_type = const double;
+ using difference_type = std::ptrdiff_t;
+ using pointer = const double*;
+ using reference = const double&;
+ using iterator_category = std::random_access_iterator_tag;
+
+public:
+
+ constexpr const_iterator() noexcept = default;
+
+ constexpr const_iterator(pointer arrow_ptr) noexcept
+ { iter_ptr = arrow_ptr; }
+
+ constexpr pointer operator->() const noexcept { return iter_ptr; }
+
+ constexpr reference operator*() const noexcept { return *iter_ptr; }
+
+ constexpr reference operator[](difference_type index) const
+ { return *(iter_ptr + index); }
+
+ constexpr const_iterator& operator++()
+ {
+   ++iter_ptr;
+   return *this;
+ }
+
+ constexpr const_iterator operator++(int)
+ {
+   auto iter = *this;
+   ++(*this);
+   return iter;
+ }
+
+ constexpr const_iterator& operator--()
+ {
+   --iter_ptr;
+   return *this;
+ }
+
+ constexpr const_iterator operator--(int)
+ {
+   auto iter = *this;
+   --(*this);
+   return iter;
+ }
+
+ constexpr const_iterator& operator+=(const int off)
+ {
+   iter_ptr += off;
+   return *this;
+ }
+
+ constexpr const_iterator operator+(difference_type& off)
+ {
+   auto iter = *this;
+   return iter += off;// return iterator(iter + off);// based off gcc stl impl
+ }
+
+ constexpr const_iterator& operator-=(int off) { return *this += -off; }
+
+ constexpr const_iterator operator-(difference_type& off)
+ {
+   auto iter = *this;
+   return iter -= off;
+ }
+
+ constexpr bool operator==(const const_iterator& other) const noexcept
+ { return iter_ptr == other.iter_ptr; }
+
+ constexpr bool operator!=(const const_iterator& other) const noexcept
+ { return iter_ptr != other.iter_ptr; }
+
+ constexpr bool operator<(const_iterator other) const noexcept
+ { return iter_ptr < other.iter_ptr; }
+
+ constexpr bool operator>(const_iterator other) const noexcept
+ { return iter_ptr > other.iter_ptr; }
+
+ constexpr bool operator<=(const_iterator other) const noexcept
+ { return iter_ptr <= other.iter_ptr; }
+
+ constexpr bool operator>=(const_iterator other) const noexcept
+ { return iter_ptr >= other.iter_ptr; }
+
+ /*constexpr difference_type operator-(const_iterator other) const noexcept
+ { return iter_ptr - other.iter_ptr; } */
+
+ constexpr friend auto operator <=>(const_iterator, const_iterator) = default;
+
+ constexpr friend double operator-(const_iterator first,
+                                   const_iterator second)
+ { return *first - *second; }
+
+ constexpr friend const_iterator operator+(const_iterator it, int off)
+ { return it += off; }
+
+ constexpr friend const_iterator operator-(const_iterator it, int off)
+ { return it -= off; }
+
+private:
+ pointer iter_ptr;
+};
+
+vector::const_iterator vector::begin() const
+{ return vector::const_iterator(arrow.get()); }
+
+vector::const_iterator vector::end() const
+{ return vector::const_iterator(arrow.get() + dimension); }
+
+const vector::const_iterator vector::cbegin() const
+{ return vector::const_iterator(arrow.get()); }
+
+const vector::const_iterator vector::cend() const
+{ return vector::const_iterator(arrow.get() + dimension); }
+
+/*
+*  END const_iterator implementation
+*/
 
 void vector::give_label(std::string s)
 { label = std::make_optional(s); }
@@ -142,12 +396,50 @@ void vector::compute_info()
   }
 }
 
-// Raw pointers are okay if they are non-owning
+// should these be further restricted or removed (at least as public members?)
 double* vector::get() const
 { return arrow.get(); }
 
 double* vector::get_arrow() const
 { return arrow.get(); }
+
+double vector::dot(const vector& v2) const
+{
+  const auto d1 = this->dimension;
+  const auto d2 = v2.dimension;
+  std::size_t min = 0;
+  if (d1 != d2)
+    min = std::min(d1, d2);
+  else
+    min = d1;
+
+  double dot = 0.0;
+  for (std::size_t i = 0; i < min; i++)
+    dot += this->arrow[i] * v2.arrow[i];
+
+  return (!compare(dot, 0.)) ? dot : 0.;
+}
+
+double vector::better_dot(const vector& v2) const
+{
+  double dot = std::inner_product(this->begin(), this->end(),
+                                  v2.begin(), 0.);
+  // this is actually not necessarily faster (at least, without
+  // an optiminization flag) general in my limited test runs
+  // for large n: via gcc it's faster; via clang it's slower
+  return (!compare(dot, 0.)) ? dot : 0.;
+}
+
+double vector::even_better_dot(const vector& v2) const
+{
+  double dot = std::transform_reduce(this->begin(), this->end(),
+                                     v2.begin(), 0.);
+  // read previous function
+  return (!compare(dot, 0.)) ? dot : 0.;
+}
+
+double dot(const vector& v1, const vector& v2)
+{ return v1.dot(v2); }
 
 double vector::mag()
 {
@@ -208,26 +500,6 @@ double vector::norm2() const
   else
     return this->dot(*this);
 }
-
-double vector::dot(const vector& v2) const
-{
-  const auto d1 = this->dimension;
-  const auto d2 = v2.dimension;
-  std::size_t min = 0;
-  if (d1 != d2)
-    min = std::min(d1, d2);
-  else
-    min = d1;
-
-  double dot = 0.0;
-  for (std::size_t i = 0; i < min; i++)
-    dot += this->arrow[i] * v2.arrow[i];
-
-  return (!compare(dot, 0.)) ? dot : 0.;
-}
-
-double dot(const vector& v1, const vector& v2)
-{ return v1.dot(v2); }
 
 vector vector::cross(const vector& v2) const
 {
@@ -372,7 +644,8 @@ vector operator+(const vector& v1, const vector& v2) { return v1.add(v2); }
 
 //vector operator+(const vector v1, const vector v2) { return v1.add(v2); }
 
-vector operator-(const vector& v1, const vector& v2) { return v1.subtract(v2); }
+vector operator-(const vector& v1, const vector& v2)
+{ return v1.subtract(v2); }
 
 vector operator*(const double d, const vector& v) { return v.scalar(d); }
 
@@ -398,249 +671,27 @@ bool operator==(const vector& v1, const vector& v2)
     return false;
 } */
 
-/*
- *  iterator implementation
- */
-struct vector::iterator
+
+double vector::pnorm(const double p) const
 {
-public:
-
-  using value_type = double;
-  using difference_type = std::ptrdiff_t;
-  using pointer = double*;
-  using reference = double&;
-  using iterator_category = std::contiguous_iterator_tag;
-
-public:
-
-  constexpr iterator() noexcept = default;
-
-  constexpr iterator(pointer arrow_ptr) noexcept { iter_ptr = arrow_ptr; }
-
-  constexpr pointer operator->() noexcept { return iter_ptr; }
-
-  constexpr reference operator*() noexcept { return *iter_ptr; }
-
-  constexpr reference operator[](difference_type index)
-  { return *(iter_ptr + index); }
-
-  constexpr iterator& operator++()
-  {
-    ++iter_ptr;
-    return *this;
-  }
-
-  constexpr iterator operator++(int)
-  {
-    auto iter = *this;
-    ++(*this);
-    return iter;
-  }
-
-  constexpr iterator& operator--()
-  {
-    --iter_ptr;
-    return *this;
-  }
-
-  constexpr iterator operator--(int)
-  {
-    auto iter = *this;
-    --(*this);
-    return iter;
-  }
-
-  constexpr iterator& operator+=(int off)
-  {
-    iter_ptr += off;
-    return *this;
-  }
-
-  constexpr iterator operator+(difference_type& off)
-  {
-    auto iter = *this;
-    return iter += off;// return iterator(iter + off);// based off gcc stl impl
-  }
-
-  constexpr iterator& operator-=(int off) { return *this += -off; }
-
-  constexpr iterator operator-(difference_type& off)
-  {
-    auto iter = *this;
-    return iter -= off;
-  }
-
-  constexpr bool operator==(const iterator& other) const noexcept
-  { return iter_ptr == other.iter_ptr; }
-
-  constexpr bool operator!=(const iterator& other) const noexcept
-  { return iter_ptr != other.iter_ptr; } // should it be !( == )?
-
-  constexpr bool operator<(iterator other) const noexcept
-  { return iter_ptr < other.iter_ptr; }
-
-  constexpr bool operator>(iterator other) const noexcept
-  { return iter_ptr > other.iter_ptr; }
-
-  constexpr bool operator<=(iterator other) const noexcept
-  { return iter_ptr <= other.iter_ptr; }
-
-  constexpr bool operator>=(iterator other) const noexcept
-  { return iter_ptr >= other.iter_ptr; }
-
-  constexpr difference_type operator-(iterator other) const noexcept
-  { return iter_ptr - other.iter_ptr; }
-
-  constexpr friend auto operator<=>(iterator, iterator) = default;
-
-  constexpr friend difference_type operator-(iterator first, iterator second)
-  { return *first - *second; } // are
-
-  constexpr friend iterator operator+(iterator it, int off)
-  { return it += off; } // these
-
-  constexpr friend iterator operator-(iterator it, int off)
-  { return it -= off; } // okay? sure
-
-  //friend iterator operator+(int off, iterator);
-
-private:
-  pointer iter_ptr;
-};
-
-vector::iterator vector::begin() { return vector::iterator(arrow.get()); }
-
-vector::iterator vector::end()
-{ return vector::iterator(arrow.get() + dimension); }
-
-vector::iterator begin(vector& v) { return v.begin(); }
-
-vector::iterator end(vector& v) { return v.end(); }
-
-struct vector::const_iterator
-{
-public:
-
-  using value_type = const double;
-  using difference_type = std::ptrdiff_t;
-  using pointer = const double*;
-  using reference = const double&;
-  using iterator_category = std::contiguous_iterator_tag;
-
-public:
-
-  constexpr const_iterator() noexcept = default;
-
-  constexpr const_iterator(pointer arrow_ptr) noexcept
-  { iter_ptr = arrow_ptr; }
-
-  constexpr pointer operator->() const noexcept { return iter_ptr; }
-
-  constexpr reference operator*() const noexcept { return *iter_ptr; }
-
-  constexpr reference operator[](difference_type index) const
-  { return *(iter_ptr + index); }
-
-  constexpr const_iterator& operator++()
-  {
-    ++iter_ptr;
-    return *this;
-  }
-
-  constexpr const_iterator operator++(int)
-  {
-    auto iter = *this;
-    ++(*this);
-    return iter;
-  }
-
-  constexpr const_iterator& operator--()
-  {
-    --iter_ptr;
-    return *this;
-  }
-
-  constexpr const_iterator operator--(int)
-  {
-    auto iter = *this;
-    --(*this);
-    return iter;
-  }
-
-  constexpr const_iterator& operator+=(const int off)
-  {
-    iter_ptr += off;
-    return *this;
-  }
-
-  constexpr const_iterator operator+(difference_type& off)
-  {
-    auto iter = *this;
-    return iter += off;// return iterator(iter + off);// based off gcc stl impl
-  }
-
-  constexpr const_iterator& operator-=(int off) { return *this += -off; }
-
-  constexpr const_iterator operator-(difference_type& off)
-  {
-    auto iter = *this;
-    return iter -= off;
-  }
-
-  constexpr bool operator==(const const_iterator& other) const noexcept
-  { return iter_ptr == other.iter_ptr; }
-
-  constexpr bool operator!=(const const_iterator& other) const noexcept
-  { return iter_ptr != other.iter_ptr; }
-
-  constexpr bool operator<(const_iterator other) const noexcept
-  { return iter_ptr < other.iter_ptr; }
-
-  constexpr bool operator>(const_iterator other) const noexcept
-  { return iter_ptr > other.iter_ptr; }
-
-  constexpr bool operator<=(const_iterator other) const noexcept
-  { return iter_ptr <= other.iter_ptr; }
-
-  constexpr bool operator>=(const_iterator other) const noexcept
-  { return iter_ptr >= other.iter_ptr; }
-
-  constexpr difference_type operator-(const_iterator other) const noexcept
-  { return iter_ptr - other.iter_ptr; }
-
-  constexpr friend auto operator<=>(const_iterator, const_iterator) = default;
-
-  constexpr friend double operator-(const_iterator first, const_iterator second)
-  { return *first - *second; }
-
-  constexpr friend const_iterator operator+(const_iterator it, int off)
-  { return it += off; }
-
-  constexpr friend const_iterator operator-(const_iterator it, int off)
-  { return it -= off; }
-
-private:
-  pointer iter_ptr;
-};
-
-vector::const_iterator vector::begin() const
-{ return vector::const_iterator(arrow.get()); }
-
-vector::const_iterator vector::end() const
-{ return vector::const_iterator(arrow.get() + dimension); }
-
-const vector::const_iterator vector::cbegin() const
-{ return vector::const_iterator(arrow.get()); }
-
-const vector::const_iterator vector::cend() const
-{ return vector::const_iterator(arrow.get() + dimension); }
-
-/*
- *  END iterator implementation
- */
-
- vector make_zero_vector(const std::size_t dim)
- { return vector(dim); }
+ //double little_lpnorm = 0.;
+ const double one_over_p = 1 / p;
+ /* for (const auto& component : *this)
+ { little_lpnorm += std::pow(component, p); } */
+ double little_lp_norm = std::accumulate(this->begin(), this->end(), 0.,
+                                        [&] (auto powered, auto powerless) {
+                                          return std::forward<double>(powered)
+                                               + std::pow(std::abs(powerless),
+                                                          p);
+                                        });
+ return std::pow(little_lp_norm, one_over_p);
+}
+
+double vector::lpnorm(const double p) const
+{ return this->pnorm(p); }
+
+vector make_zero_vector(const std::size_t dim)
+{ return vector(dim); }
 
 void vector::print() const
 {
