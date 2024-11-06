@@ -170,7 +170,7 @@ vector operator*(const vector&, const double);
 vector operator/(const vector&, const double);
 bool operator==(const vector&, const vector&);
 
-constexpr bool compare(const double a, const double b)
+bool compare(const double a, const double b)
 {
   constexpr double epsilon = 4 * std::numeric_limits<double>::epsilon();
 
