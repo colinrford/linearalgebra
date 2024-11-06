@@ -163,7 +163,7 @@ class matrix {
 
 		void writeTeXto(std::string);
 
-		~matrix() = default; // does this not work?
+		~matrix();// = default; // does this not work?
 
 		struct iterator;
 

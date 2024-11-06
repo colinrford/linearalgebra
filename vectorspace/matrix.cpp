@@ -231,6 +231,8 @@ double& matrix::operator[](const std::size_t i, const std::size_t j) const
 		throw matrix_exception::out_of_bounds();
 }
 
+matrix::~matrix() = default;
+
 /*double** Matrix::getMatrix()
 {
 	//auto m = matrix.get();

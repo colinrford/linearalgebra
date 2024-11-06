@@ -12,12 +12,12 @@
 namespace linalg
 {
 
-  /*auto make_indexing_set = [](const std::size_t n) -> std::list<std::size_t>
-  {
-  	std::list<std::size_t> ell(n);
-  	std::iota(ell.begin(), ell.end(), 0);
-  	return ell;
-  }; //this may actually be too slow to use, sadly*/
+/*auto make_indexing_set = [](const std::size_t n) -> std::list<std::size_t>
+{
+	std::list<std::size_t> ell(n);
+	std::iota(ell.begin(), ell.end(), 0);
+	return ell;
+}; */
 
 vector::vector(const std::size_t dim)
       : dimension{dim}
