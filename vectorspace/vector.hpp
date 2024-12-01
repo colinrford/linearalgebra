@@ -29,7 +29,8 @@ struct vector_exception : public std::exception {
   };
   struct cross_undef : public std::exception {
     const char* what () const throw () {
-      return "This cross product is not defined in dimensions other than 3. Wedges later.\n";
+      return "This cross product is not defined in dimensions other than 3. \
+              Wedges later.\n";
     }
   };
   struct out_of_bounds : public std::exception {
@@ -68,13 +69,11 @@ class vector {
 
     using value_type = double;
 
-    //vector() = delete; // for now?
-
     vector(const std::size_t);
 
-    vector(const std::initializer_list<double>);
+    vector(const std::initializer_list<value_type>);
 
-    vector(const std::vector<double>);
+    vector(const std::vector<value_type>);
 
     vector(vector&&) noexcept;
 
@@ -102,34 +101,34 @@ class vector {
 
     void compute_info();
 
-    double* get() const;
-    double* get_arrow() const;
+    value_type* get() const;
+    value_type* get_arrow() const;
 
-    double dot(const vector&) const;
-    double better_dot(const vector&) const;
-    double even_better_dot(const vector&) const;
+    value_type dot(const vector&) const;
+    value_type better_dot(const vector&) const;
+    value_type even_better_dot(const vector&) const;
 
-    double mag();
-    double mag() const;
+    value_type mag();
+    value_type mag() const;
 
-    double mag2();
-    double mag2() const;
+    value_type mag2();
+    value_type mag2() const;
 
-    double norm();
-    double norm() const;
+    value_type norm();
+    value_type norm() const;
 
-    double norm2();
-    double norm2() const;
+    value_type norm2();
+    value_type norm2() const;
 
-    double pnorm(const double) const;
-    double lpnorm(const double) const;
+    value_type pnorm(const value_type) const;
+    value_type lpnorm(const value_type) const;
 
     vector cross(const vector&) const;
 
     vector add(const vector&) const;
     vector subtract(const vector&) const;
-
-    vector scalar(const double) const;
+    vector negate() const;
+    vector scalar(const value_type) const;
 
     vector unit() const;
 
@@ -139,7 +138,7 @@ class vector {
 
     void print() const;
 
-    ~vector();// = default;
+    ~vector();
 
     struct iterator;
     iterator begin();
@@ -148,9 +147,12 @@ class vector {
     struct const_iterator;
     const_iterator begin() const;
     const_iterator end() const;
-
     const const_iterator cbegin() const;
     const const_iterator cend() const;
+
+    struct unsafe_iterator;
+    unsafe_iterator ubegin();
+    unsafe_iterator uend();
 };  // end class vector
 
 struct vector_info
@@ -165,27 +167,12 @@ vector make_zero_vector(const std::size_t);
 
 vector operator+(const vector&, const vector&);
 vector operator-(const vector&, const vector&);
+vector operator-(const vector&);
 vector operator*(const double, const vector&);
 vector operator*(const vector&, const double);
 vector operator/(const vector&, const double);
 bool operator==(const vector&, const vector&);
 
-bool compare(const double a, const double b)
-{
-  constexpr double epsilon = 4 * std::numeric_limits<double>::epsilon();
-
-  if (abs(b - a) < epsilon)
-    return true;
-  else
-    return false;
-}
-
-/*bool compare(const double a, const double b, const double epsilon)
-{
-  if (abs(b - a) < epsilon)
-    return true;
-  else
-    return false;
-}*/
+void print(const vector&);
 
 } // end namespace linalg

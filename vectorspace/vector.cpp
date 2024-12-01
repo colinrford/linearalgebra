@@ -1,9 +1,10 @@
 
 #include "vector.hpp"
 #include <algorithm>
+//#include <
 #include <cstddef>
-#include <chrono>
-#include <compare>
+//#include <chrono>
+//#include <compare>
 #include <execution>
 #include <iterator>
 #include <ranges>
@@ -12,12 +13,22 @@
 namespace linalg
 {
 
-/*auto make_indexing_set = [](const std::size_t n) -> std::list<std::size_t>
+/*auto make_indexing_set = [](const std::size_t n)
 {
 	std::list<std::size_t> ell(n);
 	std::iota(ell.begin(), ell.end(), 0);
 	return ell;
 }; */
+
+constexpr bool compare(const double a, const double b)
+{
+  constexpr double epsilon = 4 * std::numeric_limits<double>::epsilon();
+
+  if (std::abs(b - a) < epsilon)
+    return true;
+  else
+    return false;
+}
 
 vector::vector(const std::size_t dim)
       : dimension{dim}
@@ -171,7 +182,7 @@ public:
     return iter;
   }
 
-  constexpr iterator& operator+=(int off)
+  constexpr iterator& operator+=(difference_type off)
   {
     iter_ptr += off;
     return *this;
@@ -183,7 +194,7 @@ public:
     return iter += off;// return iterator(iter + off);// based off gcc stl impl
   }
 
-  constexpr iterator& operator-=(int off) { return *this += -off; }
+  constexpr iterator& operator-=(difference_type off) { return *this += -off; }
 
   constexpr iterator operator-(difference_type& off)
   {
@@ -214,16 +225,17 @@ public:
 
   constexpr friend auto operator <=>(iterator, iterator) = default;
 
-  /*\constexpr friend difference_type operator-(iterator first, iterator second)
+  /*\constexpr friend difference_type
+  operator-(iterator first, iterator second)
   { return *first - *second; }*/ // are
 
-  constexpr friend iterator operator+(iterator it, int off)
+  constexpr friend iterator operator+(iterator it, difference_type off)
   { return it += off; } // these
 
-  constexpr friend iterator operator-(iterator it, int off)
+  constexpr friend iterator operator-(iterator it, difference_type off)
   { return it -= off; } // okay? sure
 
-  //friend iterator operator+(int off, iterator);
+  //friend iterator operator+(difference_type off, iterator);
 
 private:
   pointer iter_ptr;
@@ -294,7 +306,7 @@ public:
    return iter;
  }
 
- constexpr const_iterator& operator+=(const int off)
+ constexpr const_iterator& operator+=(const difference_type off)
  {
    iter_ptr += off;
    return *this;
@@ -306,7 +318,8 @@ public:
    return iter += off;// return iterator(iter + off);// based off gcc stl impl
  }
 
- constexpr const_iterator& operator-=(int off) { return *this += -off; }
+ constexpr const_iterator& operator-=(difference_type off)
+ { return *this += -off; }
 
  constexpr const_iterator operator-(difference_type& off)
  {
@@ -341,10 +354,12 @@ public:
                                    const_iterator second)
  { return *first - *second; }
 
- constexpr friend const_iterator operator+(const_iterator it, int off)
+ constexpr friend const_iterator
+ operator+(const_iterator it, difference_type off)
  { return it += off; }
 
- constexpr friend const_iterator operator-(const_iterator it, int off)
+ constexpr friend const_iterator
+ operator-(const_iterator it, difference_type off)
  { return it -= off; }
 
 private:
@@ -581,6 +596,16 @@ vector vector::subtract(const vector& v2) const
 vector subtract(const vector& v1, const vector& v2)
 { return v1.subtract(v2); }
 
+vector vector::negate() const
+{
+  const std::size_t d = this->dimension;
+  auto elem = std::make_unique<double[]>(d);
+  for (std::size_t i = 0; i < d; i++)
+    elem[i] = - arrow[i];
+
+  return vector(d, std::move(elem));
+}
+
 vector vector::scalar(const double s) const
 {
   const std::size_t d = this->dimension;
@@ -642,7 +667,7 @@ vector& vector::operator+=(const vector& v2)
 
 vector operator+(const vector& v1, const vector& v2) { return v1.add(v2); }
 
-//vector operator+(const vector v1, const vector v2) { return v1.add(v2); }
+vector operator-(const vector& v) { return v.negate(); }
 
 vector operator-(const vector& v1, const vector& v2)
 { return v1.subtract(v2); }
@@ -660,17 +685,6 @@ vector operator/(const vector& v, const double d)
 
 bool operator==(const vector& v1, const vector& v2)
 { return v1.equals(v2); }
-
-/* bool compare(const double a, const double b)
-{
-  constexpr double epsilon = std::numeric_limits<double>::epsilon();
-
-  if (abs(b - a) < epsilon)
-    return true;
-  else
-    return false;
-} */
-
 
 double vector::pnorm(const double p) const
 {
@@ -711,4 +725,4 @@ void print(const vector& v)
   std::cout << *(v.end() - 1) << ")" << std::endl;
 }
 
-}
+} // end namespace linalg
