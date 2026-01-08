@@ -27,6 +27,15 @@
 *.out
 *.app
 
+# Jetbrains / CLion
+*.idea
+*.iws
+*.iml
+
+# Cmake
+build*/
+cmake-build*/
+
 # misc
 *.dSYM
 .DS_Store
