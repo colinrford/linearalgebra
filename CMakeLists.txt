@@ -15,6 +15,30 @@ set(CMAKE_CXX_MODULE_STD ON)
 set(CMAKE_CXX_SCAN_FOR_MODULES ON)
 project(linearalgebra VERSION 0.2.260108 LANGUAGES CXX)
 
+# Sanitizer Options
+option(LAM_ENABLE_ASAN "Enable AddressSanitizer" OFF)
+option(LAM_ENABLE_UBSAN "Enable UndefinedBehaviorSanitizer" OFF)
+option(LAM_ENABLE_TSAN "Enable ThreadSanitizer (cannot combine with ASan)" OFF)
+
+if(LAM_ENABLE_TSAN AND LAM_ENABLE_ASAN)
+  message(FATAL_ERROR "Cannot enable both TSan and ASan simultaneously")
+endif()
+
+if(LAM_ENABLE_ASAN)
+  add_compile_options(-fsanitize=address -fno-omit-frame-pointer)
+  add_link_options(-fsanitize=address)
+endif()
+
+if(LAM_ENABLE_UBSAN)
+  add_compile_options(-fsanitize=undefined -fno-omit-frame-pointer)
+  add_link_options(-fsanitize=undefined)
+endif()
+
+if(LAM_ENABLE_TSAN)
+  add_compile_options(-fsanitize=thread -fno-omit-frame-pointer)
+  add_link_options(-fsanitize=thread)
+endif()
+
 # Output directories
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -46,6 +70,7 @@ configure_file(
 find_package(lam_concepts REQUIRED)
 
 # Include directories
+# Include directories
 set(PROJECT_INCLUDE_DIRS
   ${PROJECT_SOURCE_DIR}/src/vectorspace
   ${PROJECT_SOURCE_DIR}/src/transformations
@@ -60,7 +85,14 @@ target_sources(linearalgebra
   BASE_DIRS ${PROJECT_SOURCE_DIR}/src ${CMAKE_CURRENT_BINARY_DIR}
   FILES
     src/vectorspace/vectorspace.cppm
+    src/vectorspace/vectorspace_concepts.cppm
+    src/vectorspace/vectorspace_exceptions.cppm
+    src/vectorspace/vectorspace_algorithms.cppm
+    src/vectorspace/vectorspace_vector.cppm
+    src/vectorspace/vectorspace_r_vector.cppm
+    src/transformations/transformations_concepts.cppm
     src/transformations/matrix.cppm
+    src/transformations/matrix_decomposition.cppm
     src/linalg.cppm
     ${CMAKE_CURRENT_BINARY_DIR}/config.cppm
 )
@@ -84,10 +116,50 @@ add_executable(la_concepts_test
 )
 target_link_libraries(la_concepts_test PRIVATE linearalgebra lam::concepts)
 
+add_executable(la_math_ops_test 
+  tests/vectorspace/test_math_ops.cpp
+)
+target_link_libraries(la_math_ops_test PRIVATE linearalgebra lam::concepts)
 
+add_executable(la_allocator_test 
+  tests/vectorspace/test_allocator_propagation.cpp
+)
+target_link_libraries(la_allocator_test PRIVATE linearalgebra lam::concepts)
+add_executable(la_benchmark_allocator 
+  benchmarks/benchmark_allocator.cpp
+)
+target_link_libraries(la_benchmark_allocator PRIVATE linearalgebra lam::concepts)
+add_executable(example_constexpr_ring 
+  examples/constexpr_ring.cpp
+)
+target_link_libraries(example_constexpr_ring PRIVATE linearalgebra lam::concepts)
+
+add_executable(la_benchmark_ranges benchmarks/benchmark_ranges.cpp)
+target_link_libraries(la_benchmark_ranges PRIVATE linearalgebra lam::concepts)
 
 # Note: The user specified toolchain should be used during configuration:
 # cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE=~/cmake-toolchains/homebrew_llvm.cmake
+
+
+add_executable(bench_compile_vector benchmarks/compile_time_vector.cpp)
+target_link_libraries(bench_compile_vector PRIVATE linearalgebra lam::concepts)
+
+add_executable(bench_compile_r_vector benchmarks/compile_time_r_vector.cpp)
+target_link_libraries(bench_compile_r_vector PRIVATE linearalgebra lam::concepts)
+
+# Algorithm Benchmarks
+add_executable(bench_algorithms benchmarks/benchmark_algorithms.cpp)
+target_link_libraries(bench_algorithms PRIVATE linearalgebra lam::concepts)
+
+add_executable(bench_compile_algo_legacy benchmarks/compile_time_legacy.cpp)
+target_link_libraries(bench_compile_algo_legacy PRIVATE linearalgebra lam::concepts)
+
+add_executable(bench_compile_algo_range benchmarks/compile_time_range.cpp)
+target_link_libraries(bench_compile_algo_range PRIVATE linearalgebra lam::concepts)
+
+add_executable(bench_compile_iota benchmarks/compile_time_iota.cpp)
+target_link_libraries(bench_compile_iota PRIVATE linearalgebra lam::concepts)
+
 
 # Installation Configuration
 include(GNUInstallDirs)
