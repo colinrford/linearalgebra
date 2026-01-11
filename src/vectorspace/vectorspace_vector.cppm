@@ -9,8 +9,7 @@ import :vectorspace.algorithms;
 namespace lam::linalg
 {
 
-export 
-template<typename T, typename Alloc = std::allocator<T>>
+export template<typename T, typename Alloc = std::allocator<T>>
   requires lam::concepts::experimental::ring_element_c_weak<T>
 class vector
 {
@@ -27,7 +26,7 @@ private:
     Alloc alloc;
     size_type n;
     constexpr Deleter(const Alloc& a = Alloc(), size_type s = 0) : alloc(a), n(s) {}
-    constexpr void operator()(pointer p) 
+    constexpr void operator()(pointer p)
     {
       if (p)
       {
@@ -89,9 +88,8 @@ public:
   vector(vector&&) noexcept = default;
   vector& operator=(vector&&) noexcept = default;
 
-  constexpr vector(const vector& other) 
-    : m_alloc{other.m_alloc},
-      m_dimension{other.m_dimension}, arrow{nullptr, Deleter{m_alloc, other.m_dimension}}
+  constexpr vector(const vector& other)
+    : m_alloc{other.m_alloc}, m_dimension{other.m_dimension}, arrow{nullptr, Deleter{m_alloc, other.m_dimension}}
   {
     if (m_dimension > 0)
     {
@@ -152,7 +150,7 @@ public:
   constexpr scalar_type dot(const vector& other) const { return lam::linalg::dot(*this, other); }
   constexpr scalar_type norm2() const { return lam::linalg::norm2(*this); }
   constexpr scalar_type norm() const { return lam::linalg::norm(*this); }
-  
+
   constexpr scalar_type pnorm(scalar_type p) const
   {
     scalar_type sum = scalar_type{0};
@@ -214,7 +212,7 @@ public:
       arrow[i] -= other.arrow[i];
     return *this;
   }
-  
+
   constexpr vector& operator*=(const scalar_type& s)
   {
     for (size_type i = 0; i < m_dimension; ++i)
@@ -255,9 +253,18 @@ public:
   constexpr vector reflect(const vector& normal) const { return lam::linalg::reflect(*this, normal); }
   constexpr vector lerp(const vector& other, scalar_type t) const { return lam::linalg::lerp(*this, other, t); }
   constexpr scalar_type distance(const vector& other) const { return lam::linalg::distance(*this, other); }
-  constexpr bool is_parallel(const vector& other, scalar_type tolerance = scalar_type{1e-10}) const { return lam::linalg::is_parallel(*this, other, tolerance); }
-  constexpr bool is_orthogonal(const vector& other, scalar_type tolerance = scalar_type{1e-10}) const { return lam::linalg::is_orthogonal(*this, other, tolerance); }
-  constexpr scalar_type triple_product(const vector& b, const vector& c) const { return lam::linalg::triple_product(*this, b, c); }
+  constexpr bool is_parallel(const vector& other, scalar_type tolerance = scalar_type{1e-10}) const
+  {
+    return lam::linalg::is_parallel(*this, other, tolerance);
+  }
+  constexpr bool is_orthogonal(const vector& other, scalar_type tolerance = scalar_type{1e-10}) const
+  {
+    return lam::linalg::is_orthogonal(*this, other, tolerance);
+  }
+  constexpr scalar_type triple_product(const vector& b, const vector& c) const
+  {
+    return lam::linalg::triple_product(*this, b, c);
+  }
 };
 
 // Operators remain as thin wrappers or can also be genericized?
@@ -303,16 +310,15 @@ constexpr vector<T, Alloc> operator/(const vector<T, Alloc>& v, const T& s)
 
 // Re-export specific generic algorithms if needed, OR relies on users importing :algorithms?
 // The primary `vectorspace` module will export algorithms.
-// We keep free function wrappers here for ADL if desired? 
+// We keep free function wrappers here for ADL if desired?
 // No, removing specific wrappers (dot, cross, etc) from here because they are now in algorithms partition
 // AND exported by the primary module.
-// BUT `vector` users expect `dot(v1, v2)` to work via ADL? 
+// BUT `vector` users expect `dot(v1, v2)` to work via ADL?
 // The algorithms in `lam::linalg` namespace will be found.
 
 } // namespace lam::linalg
 
-export 
-template<typename T, typename Alloc>
+export template<typename T, typename Alloc>
 struct std::formatter<lam::linalg::vector<T, Alloc>>
 {
   constexpr auto parse(std::format_parse_context& ctx) { return ctx.begin(); }

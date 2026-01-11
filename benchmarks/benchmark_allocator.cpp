@@ -13,13 +13,13 @@ void bench_heap(int iterations)
   vec_t v1({1.0, 2.0, 3.0});
   vec_t v2({4.0, 5.0, 6.0});
 
-  auto start = high_resolution_clock::now();
+  auto start = steady_clock::now();
   for (int i = 0; i < iterations; ++i)
   {
     vec_t v3 = v1 + v2;
     sink = v3[0];
   }
-  auto end = high_resolution_clock::now();
+  auto end = steady_clock::now();
 
   auto dur = duration_cast<microseconds>(end - start).count();
   std::println("Heap Allocator: {} us for {} iterations", dur, iterations);
@@ -39,7 +39,7 @@ void bench_pmr_monotonic(int iterations)
   vec_t v1({1.0, 2.0, 3.0}, alloc);
   vec_t v2({4.0, 5.0, 6.0}, alloc);
 
-  auto start = high_resolution_clock::now();
+  auto start = steady_clock::now();
   for (int i = 0; i < iterations; ++i)
   {
     // Monotonic buffer just bumps pointer.
@@ -48,7 +48,7 @@ void bench_pmr_monotonic(int iterations)
     vec_t v3 = v1 + v2;
     sink = v3[0];
   }
-  auto end = high_resolution_clock::now();
+  auto end = steady_clock::now();
 
   auto dur = duration_cast<microseconds>(end - start).count();
   std::println("PMR Monotonic:  {} us for {} iterations", dur, iterations);
@@ -64,13 +64,13 @@ void bench_pmr_pool(int iterations)
   vec_t v1({1.0, 2.0, 3.0}, alloc);
   vec_t v2({4.0, 5.0, 6.0}, alloc);
 
-  auto start = high_resolution_clock::now();
+  auto start = steady_clock::now();
   for (int i = 0; i < iterations; ++i)
   {
     vec_t v3 = v1 + v2;
     sink = v3[0];
   }
-  auto end = high_resolution_clock::now();
+  auto end = steady_clock::now();
 
   auto dur = duration_cast<microseconds>(end - start).count();
   std::println("PMR Pool:       {} us for {} iterations", dur, iterations);

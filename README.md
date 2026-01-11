@@ -4,6 +4,7 @@ After taking some time away from battling these dragons, I have returned to this
 
 ## linearalgebra, a [LAM](https://github.com/colinford/lam) library
 
-Built with unique\_ptr, compile with c++23.
+First things first, a quick disclaimer, if you will:
+There is no beating `BLAS` or `LAPACK` it would seem, so I have decided to offer the user the choice to use `BLAS` or `LAPACK` via a `cmake` `LAM_USE_BLAS` option, which `cmake` will try and set to `ON` if it can find the `BLAS` or `LAPACK` libraries.
 
 2026

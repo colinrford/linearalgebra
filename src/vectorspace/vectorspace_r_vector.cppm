@@ -9,8 +9,7 @@ import :vectorspace.algorithms;
 namespace lam::linalg
 {
 
-export 
-template<typename T, typename Alloc = std::allocator<T>>
+export template<typename T, typename Alloc = std::allocator<T>>
   requires lam::concepts::experimental::ring_element_c_weak<T>
 class r_vector
 {
@@ -27,7 +26,7 @@ private:
     Alloc alloc;
     size_type n;
     constexpr Deleter(const Alloc& a = Alloc(), size_type s = 0) : alloc(a), n(s) {}
-    constexpr void operator()(pointer p) 
+    constexpr void operator()(pointer p)
     {
       if (p)
       {
@@ -61,15 +60,13 @@ public:
       throw vector_exception::non_pos();
     auto* ptr = std::allocator_traits<Alloc>::allocate(m_alloc, dim);
     arrow.reset(ptr);
-    
+
     // Range-based construction:
     // We want to construct `dim` elements.
-    // std::ranges::uninitialized_default_construct_n?? 
+    // std::ranges::uninitialized_default_construct_n??
     // BUT we must use Allocator.
     // So iterating over the allocated range is best.
-    std::ranges::for_each(std::span{ptr, dim}, [&](auto& e){
-         std::allocator_traits<Alloc>::construct(m_alloc, &e);
-    });
+    std::ranges::for_each(std::span{ptr, dim}, [&](auto& e) { std::allocator_traits<Alloc>::construct(m_alloc, &e); });
   }
 
   constexpr r_vector(std::initializer_list<scalar_type> il, const allocator_type& alloc = allocator_type())
@@ -79,12 +76,13 @@ public:
       throw vector_exception::non_pos();
     auto* ptr = std::allocator_traits<Alloc>::allocate(m_alloc, m_dimension);
     arrow.reset(ptr);
-    
+
     // Zip init list and allocated memory
     // Note: C++23 allows zip view over init_list usually, or we just use iterators.
     // ranges::for_each(zip(il, span))
-    for (auto&& [val, dest] : std::views::zip(il, std::span{ptr, m_dimension})) {
-         std::allocator_traits<Alloc>::construct(m_alloc, &dest, val);
+    for (auto&& [val, dest] : std::views::zip(il, std::span{ptr, m_dimension}))
+    {
+      std::allocator_traits<Alloc>::construct(m_alloc, &dest, val);
     }
   }
 
@@ -95,26 +93,27 @@ public:
       throw vector_exception::non_pos();
     auto* ptr = std::allocator_traits<Alloc>::allocate(m_alloc, m_dimension);
     arrow.reset(ptr);
-    
-    for (auto&& [val, dest] : std::views::zip(v, std::span{ptr, m_dimension})) {
-         std::allocator_traits<Alloc>::construct(m_alloc, &dest, val);
+
+    for (auto&& [val, dest] : std::views::zip(v, std::span{ptr, m_dimension}))
+    {
+      std::allocator_traits<Alloc>::construct(m_alloc, &dest, val);
     }
   }
 
   r_vector(r_vector&&) noexcept = default;
   r_vector& operator=(r_vector&&) noexcept = default;
 
-  constexpr r_vector(const r_vector& other) 
-    : m_alloc{other.m_alloc},
-      m_dimension{other.m_dimension}, arrow{nullptr, Deleter{m_alloc, other.m_dimension}}
+  constexpr r_vector(const r_vector& other)
+    : m_alloc{other.m_alloc}, m_dimension{other.m_dimension}, arrow{nullptr, Deleter{m_alloc, other.m_dimension}}
   {
     if (m_dimension > 0)
     {
       auto* ptr = std::allocator_traits<Alloc>::allocate(m_alloc, m_dimension);
       arrow.reset(ptr);
-      
-      for (auto&& [val, dest] : std::views::zip(other.as_span(), std::span{ptr, m_dimension})) {
-         std::allocator_traits<Alloc>::construct(m_alloc, &dest, val);
+
+      for (auto&& [val, dest] : std::views::zip(other.as_span(), std::span{ptr, m_dimension}))
+      {
+        std::allocator_traits<Alloc>::construct(m_alloc, &dest, val);
       }
     }
   }
@@ -126,9 +125,10 @@ public:
     {
       auto* ptr = std::allocator_traits<Alloc>::allocate(m_alloc, m_dimension);
       arrow.reset(ptr);
-      
-      for (auto&& [val, dest] : std::views::zip(other.as_span(), std::span{ptr, m_dimension})) {
-         std::allocator_traits<Alloc>::construct(m_alloc, &dest, val);
+
+      for (auto&& [val, dest] : std::views::zip(other.as_span(), std::span{ptr, m_dimension}))
+      {
+        std::allocator_traits<Alloc>::construct(m_alloc, &dest, val);
       }
     }
   }
@@ -175,7 +175,7 @@ public:
     // sum = fold_left( transform(abs(v), pow(p)), 0, + )
     // Not standard, but doable.
     // C++23 fold_left requires <algorithm>
-    auto abs_pow = std::views::transform(as_span(), [p](auto val){ return std::pow(std::abs(val), p); });
+    auto abs_pow = std::views::transform(as_span(), [p](auto val) { return std::pow(std::abs(val), p); });
     scalar_type sum = std::ranges::fold_left(abs_pow, scalar_type{0}, std::plus<scalar_type>{});
     return std::pow(sum, scalar_type{1} / p);
   }
@@ -185,7 +185,8 @@ public:
 
   constexpr bool operator==(const r_vector& other) const
   {
-    if (m_dimension != other.m_dimension) return false;
+    if (m_dimension != other.m_dimension)
+      return false;
     return std::ranges::equal(as_span(), other.as_span());
   }
 
@@ -193,7 +194,7 @@ public:
   {
     r_vector res(*this, m_alloc);
     // Range transform in place?
-    std::ranges::transform(res.as_span(), res.begin(), [](auto val){ return -val; });
+    std::ranges::transform(res.as_span(), res.begin(), [](auto val) { return -val; });
     return res;
   }
 
@@ -201,10 +202,11 @@ public:
   {
     if (m_dimension != other.m_dimension)
       throw vector_exception::plus_equals_unequal_dim();
-    
+
     // Zip + for_each to add
-    for (auto&& [a, b] : std::views::zip(as_span(), other.as_span())) {
-        a += b;
+    for (auto&& [a, b] : std::views::zip(as_span(), other.as_span()))
+    {
+      a += b;
     }
     return *this;
   }
@@ -223,18 +225,19 @@ public:
   {
     if (m_dimension != other.m_dimension)
       throw vector_exception::plus_equals_unequal_dim();
-    
-    for (auto&& [a, b] : std::views::zip(as_span(), other.as_span())) {
-        a -= b;
+
+    for (auto&& [a, b] : std::views::zip(as_span(), other.as_span()))
+    {
+      a -= b;
     }
     return *this;
   }
-  
+
   constexpr r_vector& operator*=(const scalar_type& s)
   {
     // transform in place
     // Or for_each
-    std::ranges::for_each(as_span(), [s](auto& val){ val *= s; });
+    std::ranges::for_each(as_span(), [s](auto& val) { val *= s; });
     return *this;
   }
 
@@ -243,7 +246,7 @@ public:
     if (s == scalar_type{0})
       throw vector_exception::div_by_zero();
     scalar_type inv_s = scalar_type{1} / s;
-    std::ranges::for_each(as_span(), [inv_s](auto& val){ val *= inv_s; });
+    std::ranges::for_each(as_span(), [inv_s](auto& val) { val *= inv_s; });
     return *this;
   }
 
@@ -253,7 +256,7 @@ public:
     if (n == scalar_type{0})
       throw vector_exception::div_by_zero();
     scalar_type inv_n = scalar_type{1} / n;
-    operator*=(inv_n); 
+    operator*=(inv_n);
     return *this;
   }
 
@@ -264,9 +267,18 @@ public:
   constexpr r_vector reflect(const r_vector& normal) const { return lam::linalg::reflect(*this, normal); }
   constexpr r_vector lerp(const r_vector& other, scalar_type t) const { return lam::linalg::lerp(*this, other, t); }
   constexpr scalar_type distance(const r_vector& other) const { return lam::linalg::distance(*this, other); }
-  constexpr bool is_parallel(const r_vector& other, scalar_type tolerance = scalar_type{1e-10}) const { return lam::linalg::is_parallel(*this, other, tolerance); }
-  constexpr bool is_orthogonal(const r_vector& other, scalar_type tolerance = scalar_type{1e-10}) const { return lam::linalg::is_orthogonal(*this, other, tolerance); }
-  constexpr scalar_type triple_product(const r_vector& b, const r_vector& c) const { return lam::linalg::triple_product(*this, b, c); }
+  constexpr bool is_parallel(const r_vector& other, scalar_type tolerance = scalar_type{1e-10}) const
+  {
+    return lam::linalg::is_parallel(*this, other, tolerance);
+  }
+  constexpr bool is_orthogonal(const r_vector& other, scalar_type tolerance = scalar_type{1e-10}) const
+  {
+    return lam::linalg::is_orthogonal(*this, other, tolerance);
+  }
+  constexpr scalar_type triple_product(const r_vector& b, const r_vector& c) const
+  {
+    return lam::linalg::triple_product(*this, b, c);
+  }
 };
 
 // Operators
