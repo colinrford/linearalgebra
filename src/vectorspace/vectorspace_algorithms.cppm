@@ -10,7 +10,7 @@ export module lam.linearalgebra:vectorspace.algorithms;
 
 import std;
 import lam.concepts;
-import :vectorspace.concepts;
+
 import :vectorspace.exceptions;
 import :config;
 

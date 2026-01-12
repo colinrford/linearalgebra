@@ -68,12 +68,10 @@ target_sources(linearalgebra
   BASE_DIRS ${PROJECT_SOURCE_DIR}/src ${CMAKE_CURRENT_BINARY_DIR}
   FILES
     src/vectorspace/vectorspace.cppm
-    src/vectorspace/vectorspace_concepts.cppm
     src/vectorspace/vectorspace_exceptions.cppm
     src/vectorspace/vectorspace_algorithms.cppm
     src/vectorspace/vectorspace_vector.cppm
     src/vectorspace/vectorspace_r_vector.cppm
-    src/transformations/transformations_concepts.cppm
     src/transformations/matrix.cppm
     src/transformations/matrix_product.cppm
     src/transformations/matrix_decomposition.cppm

@@ -11,7 +11,7 @@ import std;
 import lam.concepts;
 import :config;
 import :vectorspace;
-import :transformations.concepts;
+
 
 namespace lam::linalg
 {
@@ -427,9 +427,9 @@ constexpr vector<T, Alloc> operator*(const matrix<T, Alloc, Layout>& m, const ve
 }
 
 // Verify matrix satisfies concepts
-static_assert(lam::linalg::concepts::experimental::matrix_c_weak<matrix<double>, double>);
+static_assert(lam::concepts::experimental::matrix_c_weak<matrix<double>, double>);
 static_assert(
-  lam::linalg::concepts::experimental::linear_transformation_c_weak<matrix<double>, vector<double>, vector<double>>);
+  lam::concepts::experimental::linear_transformation_c_weak<matrix<double>, vector<double>, vector<double>>);
 
 } // namespace lam::linalg
 

@@ -11,7 +11,7 @@ import lam.linearalgebra;
 import lam.concepts;
 
 using namespace lam::linalg;
-using namespace lam::linalg::concepts::experimental;
+using namespace lam::concepts::experimental;
 
 // Mock "Foreign" Matrix (e.g., behaving like Eigen or another library)
 // Uses rows()/cols() instead of get_rows()/get_cols()

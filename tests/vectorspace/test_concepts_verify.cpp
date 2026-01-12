@@ -11,7 +11,7 @@ import lam.linearalgebra;
 import lam.concepts;
 
 using namespace lam::linalg;
-using namespace lam::linalg::concepts::experimental;
+using namespace lam::concepts::experimental;
 
 // Check vector<double> (Field scalar)
 static_assert(vector_c_weak<vector<double>>);
