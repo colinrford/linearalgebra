@@ -1,3 +1,11 @@
+/*
+ *  matrix_product.cppm - Colin Ford
+ *    see github.com/colinrford/linearalgebra for more info
+ *    lam.linearalgebra is unlicensed at this time
+ *
+ *  matrix_product is a c++ module
+ */
+
 export module lam.linearalgebra:matrix.product;
 
 import std;

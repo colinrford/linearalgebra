@@ -1,3 +1,10 @@
+/*
+ *  compile_time_range.cpp - Colin Ford
+ *    see github.com/colinrford/linearalgebra for more info
+ *    lam.linearalgebra is unlicensed at this time
+ *
+ *  compile_time_range is a c++ module
+ */
 
 import std;
 import lam.linearalgebra;

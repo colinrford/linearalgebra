@@ -1,3 +1,10 @@
+/*
+ *  benchmark_accelerate.cpp - Colin Ford
+ *    see github.com/colinrford/linearalgebra for more info
+ *    lam.linearalgebra is unlicensed at this time
+ *
+ *  benchmark_accelerate is a c++ module
+ */
 
 #include <Accelerate/Accelerate.h>
 #include <chrono>

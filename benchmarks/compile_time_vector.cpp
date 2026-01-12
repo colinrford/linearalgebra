@@ -1,3 +1,11 @@
+/*
+ *  compile_time_vector.cpp - Colin Ford
+ *    see github.com/colinrford/linearalgebra for more info
+ *    lam.linearalgebra is unlicensed at this time
+ *
+ *  compile_time_vector is a c++ module
+ */
+
 import lam.linearalgebra;
 import std;
 

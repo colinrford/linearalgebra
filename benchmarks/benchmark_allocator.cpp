@@ -1,3 +1,11 @@
+/*
+ *  benchmark_allocator.cpp - Colin Ford
+ *    see github.com/colinrford/linearalgebra for more info
+ *    lam.linearalgebra is unlicensed at this time
+ *
+ *  benchmark_allocator is a c++ module
+ */
+
 import std;
 import lam.linearalgebra;
 

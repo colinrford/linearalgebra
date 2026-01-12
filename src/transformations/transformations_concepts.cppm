@@ -1,3 +1,11 @@
+/*
+ *  transformations_concepts.cppm - Colin Ford
+ *    see github.com/colinrford/linearalgebra for more info
+ *    lam.linearalgebra is unlicensed at this time
+ *
+ *  transformations_concepts is a c++ module
+ */
+
 export module lam.linearalgebra:transformations.concepts;
 
 import std;

@@ -1,3 +1,11 @@
+/*
+ *  matrix_decomposition.cppm - Colin Ford
+ *    see github.com/colinrford/linearalgebra for more info
+ *    lam.linearalgebra is unlicensed at this time
+ *
+ *  matrix_decomposition is a c++ module
+ */
+
 export module lam.linearalgebra:matrix.decomposition;
 
 import std;

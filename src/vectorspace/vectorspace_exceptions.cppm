@@ -1,3 +1,11 @@
+/*
+ *  vectorspace_exceptions.cppm - Colin Ford
+ *    see github.com/colinrford/linearalgebra for more info
+ *    lam.linearalgebra is unlicensed at this time
+ *
+ *  vectorspace_exceptions is a c++ module
+ */
+
 export module lam.linearalgebra:vectorspace.exceptions;
 
 import std;

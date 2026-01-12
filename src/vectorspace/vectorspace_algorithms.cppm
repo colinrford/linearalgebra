@@ -1,3 +1,11 @@
+/*
+ *  vectorspace_algorithms.cppm - Colin Ford
+ *    see github.com/colinrford/linearalgebra for more info
+ *    lam.linearalgebra is unlicensed at this time
+ *
+ *  vectorspace_algorithms is a c++ module
+ */
+
 export module lam.linearalgebra:vectorspace.algorithms;
 
 import std;
@@ -12,10 +20,10 @@ namespace lam::linalg
 #ifdef LAM_USE_BLAS
 extern "C"
 {
-  double cblas_ddot(const int N, const double *X, const int incX, const double *Y, const int incY);
-  float cblas_sdot(const int N, const float *X, const int incX, const float *Y, const int incY);
-  double cblas_dnrm2(const int N, const double *X, const int incX);
-  float cblas_snrm2(const int N, const float *X, const int incX);
+  double cblas_ddot(const int N, const double* X, const int incX, const double* Y, const int incY);
+  float cblas_sdot(const int N, const float* X, const int incX, const float* Y, const int incY);
+  double cblas_dnrm2(const int N, const double* X, const int incX);
+  float cblas_snrm2(const int N, const float* X, const int incX);
 }
 
 template<typename T>
@@ -28,10 +36,7 @@ struct blas_vector_dispatcher<double>
   {
     return cblas_ddot(N, X, incX, Y, incY);
   }
-  static double nrm2(int N, const double* X, int incX)
-  {
-    return cblas_dnrm2(N, X, incX);
-  }
+  static double nrm2(int N, const double* X, int incX) { return cblas_dnrm2(N, X, incX); }
 };
 
 template<>
@@ -41,10 +46,7 @@ struct blas_vector_dispatcher<float>
   {
     return cblas_sdot(N, X, incX, Y, incY);
   }
-  static float nrm2(int N, const float* X, int incX)
-  {
-    return cblas_snrm2(N, X, incX);
-  }
+  static float nrm2(int N, const float* X, int incX) { return cblas_snrm2(N, X, incX); }
 };
 #endif
 
@@ -90,7 +92,8 @@ constexpr typename V::scalar_type dot(const V& a, const V& b)
 #ifdef LAM_USE_BLAS
       if constexpr (std::ranges::contiguous_range<V>)
       {
-        if (min_dim == 0) return T{0};
+        if (min_dim == 0)
+          return T{0};
         const T* pa = std::to_address(std::ranges::begin(a));
         const T* pb = std::to_address(std::ranges::begin(b));
         // Note: Assuming stride 1 for contiguous vectors
@@ -115,34 +118,35 @@ export template<lam::linalg::concepts::experimental::vector_c_weak V>
 constexpr typename V::scalar_type norm2(const V& v)
 {
   using T = typename V::scalar_type;
-  
+
   if consteval
   {
-     return dot(v, v);
+    return dot(v, v);
   }
   else
   {
     if constexpr (config::use_blas && (std::is_same_v<T, double> || std::is_same_v<T, float>))
     {
 #ifdef LAM_USE_BLAS
-       if constexpr (std::ranges::contiguous_range<V>)
-       {
-         if (v.size() == 0) return T{0};
-         const T* pv = std::to_address(std::ranges::begin(v));
-         // Use nrm2 squared? No cblas_dnrm2 returns the norm (sqrt(dot(v,v))).
-         // So for norm2 (squared norm), we might just stick to dot(v,v) or square the result of nrm2.
-         // However, dot(v,v) via BLAS (cblas_ddot) is efficient.
-         // Using cblas_dnrm2 involves a square root internally, and then we square it? Wasteful.
-         // Better to use cblas_ddot(v, v) for norm2.
-         // So actually, just calling dot(v, v) is fine because dot is already optimized!
-         return dot(v, v); 
-       }
-       else
-       {
-         return dot(v, v);
-       }
+      if constexpr (std::ranges::contiguous_range<V>)
+      {
+        if (v.size() == 0)
+          return T{0};
+        const T* pv = std::to_address(std::ranges::begin(v));
+        // Use nrm2 squared? No cblas_dnrm2 returns the norm (sqrt(dot(v,v))).
+        // So for norm2 (squared norm), we might just stick to dot(v,v) or square the result of nrm2.
+        // However, dot(v,v) via BLAS (cblas_ddot) is efficient.
+        // Using cblas_dnrm2 involves a square root internally, and then we square it? Wasteful.
+        // Better to use cblas_ddot(v, v) for norm2.
+        // So actually, just calling dot(v, v) is fine because dot is already optimized!
+        return dot(v, v);
+      }
+      else
+      {
+        return dot(v, v);
+      }
 #else
-       return dot(v, v);
+      return dot(v, v);
 #endif
     }
     else
@@ -167,9 +171,10 @@ constexpr typename V::scalar_type norm(const V& v)
 #ifdef LAM_USE_BLAS
       if constexpr (std::ranges::contiguous_range<V>)
       {
-         if (v.size() == 0) return T{0};
-         const T* pv = std::to_address(std::ranges::begin(v));
-         return blas_vector_dispatcher<T>::nrm2(static_cast<int>(v.size()), pv, 1);
+        if (v.size() == 0)
+          return T{0};
+        const T* pv = std::to_address(std::ranges::begin(v));
+        return blas_vector_dispatcher<T>::nrm2(static_cast<int>(v.size()), pv, 1);
       }
 #endif
     }

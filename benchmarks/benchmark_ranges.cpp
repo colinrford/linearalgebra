@@ -1,3 +1,11 @@
+/*
+ *  benchmark_ranges.cpp - Colin Ford
+ *    see github.com/colinrford/linearalgebra for more info
+ *    lam.linearalgebra is unlicensed at this time
+ *
+ *  benchmark_ranges is a c++ module
+ */
+
 import lam.linearalgebra;
 import std;
 

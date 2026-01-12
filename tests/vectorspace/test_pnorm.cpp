@@ -1,3 +1,11 @@
+/*
+ *  test_pnorm.cpp - Colin Ford
+ *    see github.com/colinrford/linearalgebra for more info
+ *    lam.linearalgebra is unlicensed at this time
+ *
+ *  test_pnorm is a c++ module
+ */
+
 import std;
 import lam.linearalgebra;
 

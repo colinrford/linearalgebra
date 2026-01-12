@@ -1,3 +1,10 @@
+/*
+ *  benchmark_algorithms.cpp - Colin Ford
+ *    see github.com/colinrford/linearalgebra for more info
+ *    lam.linearalgebra is unlicensed at this time
+ *
+ *  benchmark_algorithms is a c++ module
+ */
 
 import std;
 import lam.linearalgebra;

@@ -1,3 +1,11 @@
+/*
+ *  matrix.cppm - Colin Ford
+ *    see github.com/colinrford/linearalgebra for more info
+ *    lam.linearalgebra is unlicensed at this time
+ *
+ *  matrix is a c++ module
+ */
+
 export module lam.linearalgebra:matrix;
 import std;
 import lam.concepts;

@@ -1,3 +1,11 @@
+/*
+ *  test_allocator_propagation.cpp - Colin Ford
+ *    see github.com/colinrford/linearalgebra for more info
+ *    lam.linearalgebra is unlicensed at this time
+ *
+ *  test_allocator_propagation is a c++ module
+ */
+
 import std;
 import lam.linearalgebra;
 import lam.concepts;

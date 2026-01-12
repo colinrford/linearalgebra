@@ -1,3 +1,11 @@
+/*
+ *  benchmark_matrix_mult.cpp - Colin Ford
+ *    see github.com/colinrford/linearalgebra for more info
+ *    lam.linearalgebra is unlicensed at this time
+ *
+ *  benchmark_matrix_mult is a c++ module
+ */
+
 import std;
 import lam.linearalgebra;
 

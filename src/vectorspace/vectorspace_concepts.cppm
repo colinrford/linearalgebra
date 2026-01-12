@@ -1,3 +1,11 @@
+/*
+ *  vectorspace_concepts.cppm - Colin Ford
+ *    see github.com/colinrford/linearalgebra for more info
+ *    lam.linearalgebra is unlicensed at this time
+ *
+ *  vectorspace_concepts is a c++ module
+ */
+
 export module lam.linearalgebra:vectorspace.concepts;
 
 import std;
