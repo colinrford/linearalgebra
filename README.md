@@ -1,19 +1,10 @@
-# linearalgebra
+# `lam.linearalgebra`
 
-just another math library..
+After taking some time away from battling these dragons, I have returned to this project: `lam.linearalgebra` is now a c++ module and part of [LAM](https://github.com/colinford/lam). It is currently in a state of flux.
 
-Built with unique\_ptr, compile with c++23. Currently only 'trivial' 
-classes and methods (and all that) are implemented. Not a high performance 
-library in its current state. 
+## linearalgebra, a [LAM](https://github.com/colinford/lam) library
 
-It's a work-in-progress. Vector has iterator. Matrix uses c++23 
-multidimensional [0, ..., k] index operator. Very incomplete still but 
-writing some converters for Eigen and lapack++, unnecessary for everyone but 
-myself I imagine... but will lazily yet greatly enhance its utility for the 
-aesthetically challenged. Hopefully I can get around to setting up modules,
-which would also greatly improve the quality of life of this single digit user 
-library :0) Toying with the idea of doing constexpr unique_ptr things, as well 
-as investigating shared_ptr and atomic<shared_ptr> or things like that. TBD.
+First things first, a quick disclaimer, if you will:
+There is no beating `BLAS` or `LAPACK` it would seem, so I have decided to offer the user the choice to use `BLAS` or `LAPACK` via a `cmake` `LAM_USE_BLAS` option, which `cmake` will try and set to `ON` if it can find the `BLAS` or `LAPACK` libraries.
 
-2024
-
+2026

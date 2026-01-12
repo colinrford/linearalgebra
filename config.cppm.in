@@ -1,0 +1,27 @@
+module;
+
+import std;
+
+export module lam.linearalgebra:config;
+
+export namespace lam::linalg::config
+{
+  // Version
+  inline constexpr int version_major = @PROJECT_VERSION_MAJOR@;
+  inline constexpr int version_minor = @PROJECT_VERSION_MINOR@;
+  inline constexpr int version_patch = @PROJECT_VERSION_PATCH@;
+  inline constexpr std::string_view version_string = "@PROJECT_VERSION@";
+
+  // Build Type string
+  inline constexpr std::string_view build_type = "@CMAKE_BUILD_TYPE@";
+
+  // Git Metadata
+  inline constexpr std::string_view git_hash = "@GIT_HASH@";
+
+  // Debug Status
+  inline constexpr bool is_debug = @IS_DEBUG@;
+
+  // BLAS Backend Configuration
+  inline constexpr bool use_blas = @LAM_USE_BLAS_BOOL@;
+  inline constexpr std::string_view blas_backend = "@LAM_BLAS_BACKEND@";
+}
