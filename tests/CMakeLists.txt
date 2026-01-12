@@ -43,3 +43,6 @@ add_executable(la_allocator_test
   vectorspace/test_allocator_propagation.cpp
 )
 target_link_libraries(la_allocator_test PRIVATE linearalgebra lam::concepts)
+
+add_executable(la_test_blas_dispatch vectorspace/test_blas_dispatch.cpp)
+target_link_libraries(la_test_blas_dispatch PRIVATE linearalgebra lam::concepts)
