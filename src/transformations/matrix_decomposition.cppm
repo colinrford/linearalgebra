@@ -11,7 +11,7 @@ export module lam.linearalgebra:matrix.decomposition;
 import std;
 import lam.concepts;
 import :vectorspace;
-import :transformations.concepts;
+
 import :matrix;
 
 namespace lam::linalg
@@ -65,7 +65,7 @@ using matrix_alloc_t = typename M::allocator_type;
  * Based on Numerical Recipes, 3rd Ed.
  */
 export template<typename M>
-  requires concepts::experimental::matrix_c_weak<M, typename M::scalar_type>
+  requires lam::concepts::experimental::matrix_c_weak<M, typename M::scalar_type>
 auto crout_lu(const M& A) -> std::optional<LUdcmp<typename M::scalar_type>>
 {
   using T = typename M::scalar_type;
@@ -156,7 +156,7 @@ auto crout_lu(const M& A) -> std::optional<LUdcmp<typename M::scalar_type>>
  * Compute determinant using Crout LU decomposition.
  */
 export template<typename M>
-  requires concepts::experimental::matrix_c_weak<M, typename M::scalar_type>
+  requires lam::concepts::experimental::matrix_c_weak<M, typename M::scalar_type>
 typename M::scalar_type crout_lu_det(const M& A)
 {
   using T = typename M::scalar_type;
@@ -178,7 +178,7 @@ typename M::scalar_type crout_lu_det(const M& A)
  * Solve linear system Ax = b using Crout LU decomposition.
  */
 export template<typename M>
-  requires concepts::experimental::matrix_c_weak<M, typename M::scalar_type>
+  requires lam::concepts::experimental::matrix_c_weak<M, typename M::scalar_type>
 auto crout_lu_solve(const M& A, const vector<typename M::scalar_type>& b) -> vector<typename M::scalar_type>
 {
   using T = typename M::scalar_type;
@@ -236,7 +236,7 @@ auto crout_lu_solve(const M& A, const vector<typename M::scalar_type>& b) -> vec
  * Compute matrix inverse using Crout LU decomposition.
  */
 export template<typename M>
-  requires concepts::experimental::matrix_c_weak<M, typename M::scalar_type>
+  requires lam::concepts::experimental::matrix_c_weak<M, typename M::scalar_type>
 auto crout_lu_inv(const M& A) -> matrix<typename M::scalar_type>
 {
   using T = typename M::scalar_type;
@@ -268,7 +268,7 @@ auto crout_lu_inv(const M& A) -> matrix<typename M::scalar_type>
  * Doolittle's LU decomposition.
  */
 export template<typename M>
-  requires concepts::experimental::matrix_c_weak<M, typename M::scalar_type>
+  requires lam::concepts::experimental::matrix_c_weak<M, typename M::scalar_type>
 auto doolittle_lu(const M& A) -> std::optional<LUdcmp<typename M::scalar_type>>
 {
   using T = typename M::scalar_type;
@@ -319,7 +319,7 @@ auto doolittle_lu(const M& A) -> std::optional<LUdcmp<typename M::scalar_type>>
  * Compute determinant using Doolittle LU decomposition.
  */
 export template<typename M>
-  requires concepts::experimental::matrix_c_weak<M, typename M::scalar_type>
+  requires lam::concepts::experimental::matrix_c_weak<M, typename M::scalar_type>
 typename M::scalar_type doolittle_lu_det(const M& A)
 {
   using T = typename M::scalar_type;
