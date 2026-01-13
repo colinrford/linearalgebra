@@ -12,5 +12,12 @@ export import lam.concepts;
 export import :matrix;
 export import :matrix.product;
 export import :matrix.decomposition;
+export import :matrix.eigenvalue;
 
 export import :config;
+
+export namespace lam
+{
+  using lam::linalg::vector;
+  using lam::linalg::matrix;
+}

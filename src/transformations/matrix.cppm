@@ -12,7 +12,6 @@ import lam.concepts;
 import :config;
 import :vectorspace;
 
-
 namespace lam::linalg
 {
 
@@ -119,7 +118,6 @@ public:
       }
     }
   }
-
   // C++23 Multidimensional []
   constexpr T& operator[](size_type i, size_type j)
   {
@@ -237,7 +235,6 @@ public:
   }
 
   // All rows — returns range of spans
-  // All rows — returns range of spans
   auto rows_range()
   {
     return std::views::iota(size_type{0}, m_rows) | std::views::transform([this](size_type i) { return this->row(i); });
@@ -249,8 +246,6 @@ public:
   }
 
   // Single column access — strided view (non-contiguous)
-  // Single column access — strided view (non-contiguous)
-  // Single column access
   auto col(size_type j)
   {
     if (j >= m_cols)
@@ -283,7 +278,6 @@ public:
     }
   }
 
-  // All columns — returns range of strided ranges
   // All columns — returns range of strided ranges
   auto cols_range()
   {

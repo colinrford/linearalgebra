@@ -13,9 +13,9 @@ import lam.concepts;
 using namespace lam::linalg;
 
 // Verify matrix satisfies vectorspace_element_c_weak
-static_assert(concepts::experimental::vectorspace_element_c_weak<matrix<double>, double>);
-static_assert(concepts::experimental::vectorspace_element_c_weak<matrix<float>, float>);
-static_assert(concepts::experimental::vectorspace_element_c_weak<matrix<int>, int>);
+static_assert(lam::concepts::experimental::vectorspace_element_c_weak<matrix<double>, double>);
+static_assert(lam::concepts::experimental::vectorspace_element_c_weak<matrix<float>, float>);
+static_assert(lam::concepts::experimental::vectorspace_element_c_weak<matrix<int>, int>);
 
 int main()
 {

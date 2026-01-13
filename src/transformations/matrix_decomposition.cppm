@@ -243,7 +243,6 @@ auto crout_lu_inv(const M& A) -> matrix<typename M::scalar_type>
   using Alloc = std::allocator<T>;
 
   const std::size_t n = A.rows();
-
   // Solve for each column of the identity
   matrix<T, Alloc> inv(n, n);
   for (std::size_t j = 0; j < n; ++j)
@@ -252,15 +251,12 @@ auto crout_lu_inv(const M& A) -> matrix<typename M::scalar_type>
     vector<T, Alloc> e(n);
     for (std::size_t i = 0; i < n; ++i)
       e[i] = (i == j) ? T{1} : T{0};
-
     // Solve A * x = e_j
     vector<T, Alloc> col = crout_lu_solve(A, e);
-
     // Copy to inverse matrix
     for (std::size_t i = 0; i < n; ++i)
       inv[i, j] = col[i];
   }
-
   return inv;
 }
 
@@ -298,7 +294,6 @@ auto doolittle_lu(const M& A) -> std::optional<LUdcmp<typename M::scalar_type>>
         sum += lu[k, p] * lu[p, j];
       lu[k, j] = A[k, j] - sum;
     }
-
     for (auto i : subsqcpo)
     {
       T sum = T{0};
@@ -310,7 +305,7 @@ auto doolittle_lu(const M& A) -> std::optional<LUdcmp<typename M::scalar_type>>
 
   vector<T, Alloc> perms(n);
   for (std::size_t i = 0; i < n; ++i)
-    perms[i] = static_cast<T>(i); // Identity permutation
+    perms[i] = static_cast<T>(i);
 
   return LUdcmp<T, Alloc>(std::move(lu), std::move(perms), 1);
 }
