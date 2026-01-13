@@ -14,16 +14,13 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_MODULE_STD ON)
 set(CMAKE_CXX_SCAN_FOR_MODULES ON)
 
-project(linearalgebra VERSION 0.3.260110 LANGUAGES CXX)
+project(lam_linearalgebra VERSION 0.3.260113 LANGUAGES CXX)
 
-# Add cmake/ directory to module path
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-# Include Modular Configuration
 include(Sanitizers)
 include(BlasSetup)
 
-# Output directories
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -47,21 +44,20 @@ else()
 endif()
 
 configure_file(
-  config.cppm.in
-  ${CMAKE_CURRENT_BINARY_DIR}/config.cppm
+  linearalgebra_config.cppm.in
+  ${CMAKE_CURRENT_BINARY_DIR}/linearalgebra_config.cppm
 )
 
 find_package(lam_concepts REQUIRED)
 
-# Include directories
 set(PROJECT_INCLUDE_DIRS
   ${PROJECT_SOURCE_DIR}/src/vectorspace
   ${PROJECT_SOURCE_DIR}/src/transformations
 )
 
-# Create library target using C++23 modules
 add_library(linearalgebra)
 add_library(lam::linearalgebra ALIAS linearalgebra)
+set_target_properties(linearalgebra PROPERTIES OUTPUT_NAME "lam_linearalgebra")
 target_sources(linearalgebra
   PUBLIC
   FILE_SET CXX_MODULES
@@ -75,24 +71,20 @@ target_sources(linearalgebra
     src/transformations/matrix.cppm
     src/transformations/matrix_product.cppm
     src/transformations/matrix_decomposition.cppm
+    src/transformations/matrix_eigenvalue.cppm
 
     src/linalg.cppm
-    ${CMAKE_CURRENT_BINARY_DIR}/config.cppm
+    ${CMAKE_CURRENT_BINARY_DIR}/linearalgebra_config.cppm
 )
 
 target_include_directories(linearalgebra PUBLIC "$<BUILD_INTERFACE:${PROJECT_INCLUDE_DIRS}>")
 target_link_libraries(linearalgebra PUBLIC lam::concepts)
 
-# Link appropriate BLAS backend to the library
 lam_link_blas(linearalgebra)
 
-# Tests
 add_subdirectory(tests)
-
-# Benchmarks
 add_subdirectory(benchmarks)
 
-# Installation
 install(TARGETS linearalgebra 
   EXPORT linearalgebraTargets
   FILE_SET CXX_MODULES DESTINATION lib/cxx/modules/linearalgebra
@@ -101,16 +93,25 @@ install(TARGETS linearalgebra
 install(EXPORT linearalgebraTargets
   FILE linearalgebraTargets.cmake
   NAMESPACE lam::
-  DESTINATION lib/cmake/linearalgebra
+  DESTINATION lib/cmake/lam_linearalgebra
 )
 
 include(CMakePackageConfigHelpers)
+
+file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/lam_linearalgebraConfig.cmake" [[
+include(CMakeFindDependencyMacro)
+find_dependency(lam_concepts)
+include("${CMAKE_CURRENT_LIST_DIR}/linearalgebraTargets.cmake")
+]])
+
 write_basic_package_version_file(
-  "linearalgebraConfigVersion.cmake"
+  "${CMAKE_CURRENT_BINARY_DIR}/lam_linearalgebraConfigVersion.cmake"
   VERSION ${PROJECT_VERSION}
   COMPATIBILITY SameMajorVersion
 )
 
-install(FILES "linearalgebraConfigVersion.cmake"
-  DESTINATION lib/cmake/linearalgebra
+install(FILES 
+  "${CMAKE_CURRENT_BINARY_DIR}/lam_linearalgebraConfig.cmake"
+  "${CMAKE_CURRENT_BINARY_DIR}/lam_linearalgebraConfigVersion.cmake"
+  DESTINATION lib/cmake/lam_linearalgebra
 )

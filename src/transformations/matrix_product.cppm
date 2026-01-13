@@ -64,7 +64,6 @@ struct blas_dispatcher<float>
 };
 #endif
 
-
 // Helper for generic multiplication (constexpr-compatible)
 template<typename T, typename Alloc, storage_layout LayoutA, storage_layout LayoutB>
 constexpr void generic_matrix_multiply(const matrix<T, Alloc, LayoutA>& a, const matrix<T, Alloc, LayoutB>& b,

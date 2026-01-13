@@ -50,7 +50,6 @@ struct blas_vector_dispatcher<float>
 };
 #endif
 
-// Internal helper for constexpr sqrt
 constexpr auto sqrt_helper(auto x)
 {
   using T = decltype(x);
@@ -66,7 +65,7 @@ constexpr auto sqrt_helper(auto x)
   return g;
 }
 
-export template<lam::linalg::concepts::experimental::vector_c_weak V>
+export template<lam::concepts::experimental::vector_c_weak V>
 constexpr typename V::scalar_type dot(const V& a, const V& b)
 {
   using T = typename V::scalar_type;
@@ -114,15 +113,13 @@ constexpr typename V::scalar_type dot(const V& a, const V& b)
   }
 }
 
-export template<lam::linalg::concepts::experimental::vector_c_weak V>
+export template<lam::concepts::experimental::vector_c_weak V>
 constexpr typename V::scalar_type norm2(const V& v)
 {
   using T = typename V::scalar_type;
 
   if consteval
-  {
     return dot(v, v);
-  }
   else
   {
     if constexpr (config::use_blas && (std::is_same_v<T, double> || std::is_same_v<T, float>))
@@ -142,28 +139,23 @@ constexpr typename V::scalar_type norm2(const V& v)
         return dot(v, v);
       }
       else
-      {
         return dot(v, v);
-      }
 #else
       return dot(v, v);
 #endif
     }
     else
-    {
       return dot(v, v);
-    }
   }
 }
 
-export template<lam::linalg::concepts::experimental::vector_c_weak V>
+export 
+template<lam::concepts::experimental::vector_c_weak V>
 constexpr typename V::scalar_type norm(const V& v)
 {
   using T = typename V::scalar_type;
   if consteval
-  {
     return sqrt_helper(norm2(v));
-  }
   else
   {
     if constexpr (config::use_blas && (std::is_same_v<T, double> || std::is_same_v<T, float>))
@@ -182,8 +174,8 @@ constexpr typename V::scalar_type norm(const V& v)
   }
 }
 
-
-export template<std::ranges::range R1, std::ranges::range R2>
+export 
+template<std::ranges::range R1, std::ranges::range R2>
   requires requires(R1 r1, R2 r2, std::size_t i) {
     r1[i];
     r2[i];
@@ -194,41 +186,35 @@ constexpr auto dot_range(const R1& r1, const R2& r2)
   using T = std::common_type_t<std::ranges::range_value_t<R1>, std::ranges::range_value_t<R2>>;
 
   if consteval
-  {
-    // Use iota-based approach for constexpr (zip has limitations 1/8/26)
+  { // Use iota-based approach for constexpr (zip has limitations 1/8/26)
     auto n = std::min(r1.size(), r2.size());
     auto indices = std::views::iota(std::size_t{0}, n);
     return std::ranges::fold_left(indices, T{0}, [&](T sum, auto i) { return sum + r1[i] * r2[i]; });
   }
   else
-  {
-    // Use zip-based approach for runtime performance
+  { // Use zip-based approach for runtime performance
     return std::ranges::fold_left(std::views::zip(r1, r2), T{0},
                                   [](T sum, const auto& pair) { return sum + std::get<0>(pair) * std::get<1>(pair); });
   }
 }
 
-export template<std::ranges::range R>
+export 
+template<std::ranges::range R>
 constexpr auto norm2_range(const R& r)
-{
-  return dot_range(r, r);
-}
+{ return dot_range(r, r); }
 
-export template<std::ranges::range R>
+export 
+template<std::ranges::range R>
 constexpr auto norm_range(const R& r)
 {
   if consteval
-  {
     return sqrt_helper(norm2_range(r));
-  }
   else
-  {
     return std::sqrt(norm2_range(r));
-  }
 }
 
-export template<lam::linalg::concepts::experimental::vector_c_weak V>
-
+export 
+template<lam::concepts::experimental::vector_c_weak V>
 constexpr typename V::scalar_type distance(const V& a, const V& b)
 {
   using T = typename V::scalar_type;
@@ -242,16 +228,13 @@ constexpr typename V::scalar_type distance(const V& a, const V& b)
   }
 
   if consteval
-  {
     return sqrt_helper(sum);
-  }
   else
-  {
     return std::sqrt(sum);
-  }
 }
 
-export template<std::ranges::range R1, std::ranges::range R2>
+export 
+template<std::ranges::range R1, std::ranges::range R2>
   requires requires(R1 r1, R2 r2, std::size_t i) {
     r1[i];
     r2[i];
@@ -262,8 +245,7 @@ constexpr auto distance_range(const R1& r1, const R2& r2)
   using T = std::common_type_t<std::ranges::range_value_t<R1>, std::ranges::range_value_t<R2>>;
 
   if consteval
-  {
-    // Use iota-based approach for constexpr (zip has limitations)
+  { // Use iota-based approach for constexpr (zip has limitations)
     auto n = std::min(r1.size(), r2.size());
     auto indices = std::views::iota(std::size_t{0}, n);
     auto sum_sq = std::ranges::fold_left(indices, T{0}, [&](T sum, auto i) {
@@ -273,8 +255,7 @@ constexpr auto distance_range(const R1& r1, const R2& r2)
     return sqrt_helper(sum_sq);
   }
   else
-  {
-    // Use zip-based approach for runtime performance
+  { // Use zip-based approach for runtime performance
     auto sum_sq = std::ranges::fold_left(std::views::zip(r1, r2), T{0}, [](T sum, const auto& pair) {
       auto d = std::get<0>(pair) - std::get<1>(pair);
       return sum + d * d;
@@ -283,8 +264,8 @@ constexpr auto distance_range(const R1& r1, const R2& r2)
   }
 }
 
-
-export template<lam::linalg::concepts::experimental::vector_c_weak V>
+export 
+template<lam::concepts::experimental::vector_c_weak V>
 constexpr typename V::scalar_type angle(const V& a, const V& b)
 {
   using T = typename V::scalar_type;
@@ -315,7 +296,8 @@ constexpr typename V::scalar_type angle(const V& a, const V& b)
   }
 }
 
-export template<lam::linalg::concepts::experimental::vector_c_weak V>
+export 
+template<lam::concepts::experimental::vector_c_weak V>
 constexpr V cross(const V& a, const V& b)
 {
   if (a.size() != 3 || b.size() != 3)
@@ -339,14 +321,16 @@ constexpr V cross(const V& a, const V& b)
   }
 }
 
-export template<lam::linalg::concepts::experimental::vector_c_weak V>
+export 
+template<lam::concepts::experimental::vector_c_weak V>
 constexpr V lerp(const V& a, const V& b, typename V::scalar_type t)
 {
   using T = typename V::scalar_type;
   return (T{1} - t) * a + t * b;
 }
 
-export template<lam::linalg::concepts::experimental::vector_c_weak V>
+export 
+template<lam::concepts::experimental::vector_c_weak V>
 constexpr V project(const V& v, const V& onto)
 {
   using T = typename V::scalar_type;
@@ -357,13 +341,13 @@ constexpr V project(const V& v, const V& onto)
   return s * onto;
 }
 
-export template<lam::linalg::concepts::experimental::vector_c_weak V>
+export 
+template<lam::concepts::experimental::vector_c_weak V>
 constexpr V reject(const V& v, const V& from)
-{
-  return v - project(v, from);
-}
+{ return v - project(v, from); }
 
-export template<lam::linalg::concepts::experimental::vector_c_weak V>
+export 
+template<lam::concepts::experimental::vector_c_weak V>
 constexpr V reflect(const V& v, const V& normal)
 {
   // r = v - 2(v·n̂)n̂  where n̂ is the unit normal
@@ -380,7 +364,8 @@ constexpr V reflect(const V& v, const V& normal)
   return v - scale * n_unit;
 }
 
-export template<lam::linalg::concepts::experimental::vector_c_weak V>
+export 
+template<lam::concepts::experimental::vector_c_weak V>
 constexpr V unit(const V& v)
 {
   using T = typename V::scalar_type;
@@ -390,14 +375,16 @@ constexpr V unit(const V& v)
   return (T{1} / n) * v;
 }
 
-export template<lam::linalg::concepts::experimental::vector_c_weak V>
+export 
+template<lam::concepts::experimental::vector_c_weak V>
 constexpr V midpoint(const V& a, const V& b)
 {
   using T = typename V::scalar_type;
   return (T{0.5}) * (a + b);
 }
 
-export template<lam::linalg::concepts::experimental::vector_c_weak V>
+export 
+template<lam::concepts::experimental::vector_c_weak V>
 constexpr bool is_parallel(const V& a, const V& b, typename V::scalar_type tolerance = typename V::scalar_type{1e-10})
 {
   using T = typename V::scalar_type;
@@ -411,7 +398,8 @@ constexpr bool is_parallel(const V& a, const V& b, typename V::scalar_type toler
   return (T{1} - abs_cos) < tolerance;
 }
 
-export template<lam::linalg::concepts::experimental::vector_c_weak V>
+export 
+template<lam::concepts::experimental::vector_c_weak V>
 constexpr bool is_orthogonal(const V& a, const V& b, typename V::scalar_type tolerance = typename V::scalar_type{1e-10})
 {
   using T = typename V::scalar_type;
@@ -425,10 +413,9 @@ constexpr bool is_orthogonal(const V& a, const V& b, typename V::scalar_type tol
   return abs_cos < tolerance;
 }
 
-export template<lam::linalg::concepts::experimental::vector_c_weak V>
+export 
+template<lam::concepts::experimental::vector_c_weak V>
 constexpr typename V::scalar_type triple_product(const V& a, const V& b, const V& c)
-{
-  return dot(a, cross(b, c));
-}
+{ return dot(a, cross(b, c)); }
 
 } // namespace lam::linalg
