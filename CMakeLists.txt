@@ -14,7 +14,36 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_MODULE_STD ON)
 set(CMAKE_CXX_SCAN_FOR_MODULES ON)
 
-project(lam_linearalgebra VERSION 0.3.260113 LANGUAGES CXX)
+project(lam_linearalgebra VERSION 0.3.260118 LANGUAGES CXX)
+
+# Emscripten needs manual __CMAKE::CXX23 target creation since CMake's
+# detection doesn't find the std modules in Emscripten's toolchain
+if(EMSCRIPTEN AND NOT TARGET "__CMAKE::CXX23")
+  set(_emscripten_libcxx_path "/usr/local/Cellar/emscripten/4.0.23/libexec/llvm/share/libc++/v1")
+  if(EXISTS "${_emscripten_libcxx_path}/std.cppm")
+    add_library(__cmake_cxx23 STATIC)
+    target_sources(__cmake_cxx23 INTERFACE "$<$<STREQUAL:$<TARGET_PROPERTY:TYPE>,STATIC_LIBRARY>:$<TARGET_OBJECTS:__cmake_cxx23>>")
+    set_property(TARGET __cmake_cxx23 PROPERTY EXCLUDE_FROM_ALL 1)
+    set_property(TARGET __cmake_cxx23 PROPERTY CXX_SCAN_FOR_MODULES 1)
+    set_property(TARGET __cmake_cxx23 PROPERTY CXX_MODULE_STD 0)
+    target_compile_features(__cmake_cxx23 PUBLIC cxx_std_23)
+    target_compile_options(__cmake_cxx23 PRIVATE -Wno-reserved-module-identifier)
+    target_include_directories(__cmake_cxx23 PRIVATE
+      "${_emscripten_libcxx_path}"
+      "/usr/local/Cellar/emscripten/4.0.23/libexec/cache/sysroot/include/c++/v1"
+      "/usr/local/Cellar/emscripten/4.0.23/libexec/cache/sysroot/include")
+    target_sources(__cmake_cxx23
+      PUBLIC
+      FILE_SET std TYPE CXX_MODULES
+        BASE_DIRS "${_emscripten_libcxx_path}"
+        FILES "${_emscripten_libcxx_path}/std.cppm" "${_emscripten_libcxx_path}/std.compat.cppm")
+    add_library(__CMAKE::CXX23 ALIAS __cmake_cxx23)
+    list(APPEND CMAKE_CXX_COMPILER_IMPORT_STD "23")
+    message(STATUS "Manually created __CMAKE::CXX23 target for Emscripten")
+  else()
+    message(WARNING "Emscripten std.cppm not found at ${_emscripten_libcxx_path}")
+  endif()
+endif()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
@@ -68,6 +97,7 @@ target_sources(linearalgebra
     src/vectorspace/vectorspace_algorithms.cppm
     src/vectorspace/vectorspace_vector.cppm
     src/vectorspace/vectorspace_r_vector.cppm
+    src/vectorspace/vectorspace_fixed_vector.cppm
     src/transformations/matrix.cppm
     src/transformations/matrix_product.cppm
     src/transformations/matrix_decomposition.cppm

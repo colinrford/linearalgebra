@@ -80,12 +80,9 @@ constexpr typename V::scalar_type dot(const V& a, const V& b)
     return sum;
   };
 
-  if consteval
-  {
+  if consteval {
     return generic_impl();
-  }
-  else
-  {
+  } else {
     if constexpr (config::use_blas && (std::is_same_v<T, double> || std::is_same_v<T, float>))
     {
 #ifdef LAM_USE_BLAS
@@ -118,10 +115,9 @@ constexpr typename V::scalar_type norm2(const V& v)
 {
   using T = typename V::scalar_type;
 
-  if consteval
+  if consteval {
     return dot(v, v);
-  else
-  {
+  } else {
     if constexpr (config::use_blas && (std::is_same_v<T, double> || std::is_same_v<T, float>))
     {
 #ifdef LAM_USE_BLAS
@@ -154,10 +150,9 @@ template<lam::concepts::experimental::vector_c_weak V>
 constexpr typename V::scalar_type norm(const V& v)
 {
   using T = typename V::scalar_type;
-  if consteval
+  if consteval {
     return sqrt_helper(norm2(v));
-  else
-  {
+  } else {
     if constexpr (config::use_blas && (std::is_same_v<T, double> || std::is_same_v<T, float>))
     {
 #ifdef LAM_USE_BLAS
@@ -185,8 +180,7 @@ constexpr auto dot_range(const R1& r1, const R2& r2)
 {
   using T = std::common_type_t<std::ranges::range_value_t<R1>, std::ranges::range_value_t<R2>>;
 
-  if consteval
-  { // Use iota-based approach for constexpr (zip has limitations 1/8/26)
+  if consteval { // Use iota-based approach for constexpr (zip has limitations 1/8/26)
     auto n = std::min(r1.size(), r2.size());
     auto indices = std::views::iota(std::size_t{0}, n);
     return std::ranges::fold_left(indices, T{0}, [&](T sum, auto i) { return sum + r1[i] * r2[i]; });
@@ -207,10 +201,11 @@ export
 template<std::ranges::range R>
 constexpr auto norm_range(const R& r)
 {
-  if consteval
+  if consteval {
     return sqrt_helper(norm2_range(r));
-  else
+  } else {
     return std::sqrt(norm2_range(r));
+  }
 }
 
 export 
@@ -227,10 +222,11 @@ constexpr typename V::scalar_type distance(const V& a, const V& b)
     sum += d * d;
   }
 
-  if consteval
+  if consteval {
     return sqrt_helper(sum);
-  else
+  } else {
     return std::sqrt(sum);
+  }
 }
 
 export 
