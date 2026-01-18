@@ -45,6 +45,10 @@ if(EMSCRIPTEN AND NOT TARGET "__CMAKE::CXX23")
   endif()
 endif()
 
+# Support centralized cmake modules for in-tree builds
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../cmake")
+  list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../cmake")
+endif()
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 include(Sanitizers)
@@ -77,7 +81,9 @@ configure_file(
   ${CMAKE_CURRENT_BINARY_DIR}/linearalgebra_config.cppm
 )
 
-find_package(lam_concepts REQUIRED)
+if(NOT TARGET lam::concepts)
+  find_package(lam_concepts REQUIRED)
+endif()
 
 set(PROJECT_INCLUDE_DIRS
   ${PROJECT_SOURCE_DIR}/src/vectorspace
