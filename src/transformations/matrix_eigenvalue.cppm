@@ -74,16 +74,6 @@ struct gep_result
 /**
  * Solve generalized eigenvalue problem: A * v = λ * B * v
  *
- * @param A n×n symmetric matrix
- * @param B n×n symmetric positive definite matrix
- * @return gep_result with eigenvalues and eigenvectors
- *
- * Uses LAPACK dsygv when available, otherwise falls back to
- * a generic implementation (currently not implemented).
- */
-/**
- * Solve generalized eigenvalue problem: A * v = λ * B * v
- *
  * Supports double (using dsygv) and std::complex<double> (using zggev).
  *
  * @param A n×n matrix
@@ -176,8 +166,7 @@ auto solve_gep(const M& A, const M& B) -> gep_result<typename M::scalar_type>
     return {std::move(eigenvalues), std::move(eigenvectors), true};
   }
   else if constexpr (std::is_same_v<T, std::complex<double>>)
-  {
-    // Complex General GEP (zggev)
+  { // Complex General GEP (zggev)
     // Note: A and B are copied to column-major format
     vector<T> a_data(n * n);
     vector<T> b_data(n * n);
@@ -239,13 +228,11 @@ auto solve_gep(const M& A, const M& B) -> gep_result<typename M::scalar_type>
     { // Force fallback for small n
       zhegvd_info = 1;
     }
-
     // Fallback to zggev (General GEP) if zhegvd failed (e.g. B not positive definite)
     // or if n <= 100 (where we didn't try zhegvd, or prefer QR/General)
     // Note: zhegvd destroys A and B on failure, so we must re-copy them.
     if (zhegvd_info != 0)
-    {
-      // Re-copy A and B
+    { // Re-copy A and B
       if constexpr (M::layout == storage_layout::col_major)
       {
         std::copy(A.begin(), A.end(), a_data.begin());
@@ -292,7 +279,6 @@ auto solve_gep(const M& A, const M& B) -> gep_result<typename M::scalar_type>
 
       // Process generalized eigenvalues alpha/beta -> lambda
       // And sort them, because zggev returns them in random order
-      // Using the logic we had before
       struct eigen_pair
       {
         T eigenvalue;
@@ -312,24 +298,14 @@ auto solve_gep(const M& A, const M& B) -> gep_result<typename M::scalar_type>
       std::sort(pairs.begin(), pairs.end(),
                 [](const eigen_pair& a, const eigen_pair& b) { return a.eigenvalue.real() < b.eigenvalue.real(); });
 
-      // Construct Result
       matrix<T> eigenvectors(n, n);
       for (std::size_t i = 0; i < n; ++i)
       {
         eigenvalues[i] = pairs[i].eigenvalue;
         std::size_t orig_idx = pairs[i].index;
 
-        // Copy eigenvector col orig_idx to col i
-        // Normalize such that v^H * B * v = 1 (if B is approx Hermitian)
-        // Note: zggev returns eigenvectors with euclidean norm = 1.
-        // We should try to normalize them for Consistency if possible,
-        // but strict B-normalization might fail if B is singular.
-        // Let's just return the Euclidean normalized vectors from zggev (sorted)
-
         for (std::size_t r = 0; r < n; ++r)
-        {
           eigenvectors[r, i] = vr[r + orig_idx * n];
-        }
 
         // Enforce B-normalization: v^H * B * v = 1
         // Compute dot = v^H * B * v
