@@ -21,6 +21,10 @@ export namespace lam::linalg::config
   // Debug Status
   inline constexpr bool is_debug = @IS_DEBUG@;
 
+  // Accelerate Backend Configuration
+  inline constexpr bool use_accelerate = @LAM_USE_ACCELERATE_BOOL@;
+  inline constexpr std::string_view accelerate_backend = "@LAM_ACCELERATE_BACKEND@";
+
   // BLAS Backend Configuration
   inline constexpr bool use_blas = @LAM_USE_BLAS_BOOL@;
   inline constexpr std::string_view blas_backend = "@LAM_BLAS_BACKEND@";
