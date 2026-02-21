@@ -14,7 +14,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_MODULE_STD ON)
 set(CMAKE_CXX_SCAN_FOR_MODULES ON)
 
-project(lam_linearalgebra VERSION 0.3.260210 LANGUAGES CXX)
+project(lam_linearalgebra VERSION 0.3.260220 LANGUAGES CXX)
 
 # Emscripten needs manual __CMAKE::CXX23 target creation since CMake's
 # detection doesn't find the std modules in Emscripten's toolchain
@@ -76,6 +76,16 @@ if(CMAKE_BUILD_TYPE AND CMAKE_BUILD_TYPE MATCHES "^[Dd][Ee][Bb][Uu][Gg]$")
 else()
   set(IS_DEBUG "false")
 endif()
+
+macro(map_bool_to_string VAR RESULT)
+  if(${VAR})
+    set(${RESULT} "true")
+  else()
+    set(${RESULT} "false")
+  endif()
+endmacro()
+
+map_bool_to_string(LAM_USE_ACCELERATE LAM_USE_ACCELERATE_BOOL)
 
 configure_file(
   linearalgebra_config.cppm.in
