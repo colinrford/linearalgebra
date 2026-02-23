@@ -1,0 +1,19 @@
+---
+Checks: >
+  -*,
+  bugprone-*,
+  performance-*,
+  modernize-*,
+  -modernize-use-trailing-return-type,
+  cppcoreguidelines-*,
+  concurrency-*,
+  clang-analyzer-*,
+  cert-*,
+  readability-*,
+  -readability-identifier-length,
+  misc-*,
+  -misc-include-cleaner
+WarningsAsErrors: ''
+HeaderFilterRegex: ''
+FormatStyle:     none
+...

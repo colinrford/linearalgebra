@@ -14,7 +14,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_MODULE_STD ON)
 set(CMAKE_CXX_SCAN_FOR_MODULES ON)
 
-project(lam_linearalgebra VERSION 0.3.260220 LANGUAGES CXX)
+project(lam_linearalgebra VERSION 0.3.260223 LANGUAGES CXX)
 
 # Emscripten needs manual __CMAKE::CXX23 target creation since CMake's
 # detection doesn't find the std modules in Emscripten's toolchain
@@ -119,6 +119,7 @@ target_sources(linearalgebra
     src/transformations/matrix_product.cppm
     src/transformations/matrix_decomposition.cppm
     src/transformations/matrix_eigenvalue.cppm
+    src/transformations/matrix_svd.cppm
 
     src/linalg.cppm
     ${CMAKE_CURRENT_BINARY_DIR}/linearalgebra_config.cppm

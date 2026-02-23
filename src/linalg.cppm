@@ -13,11 +13,12 @@ export import :matrix;
 export import :matrix.product;
 export import :matrix.decomposition;
 export import :matrix.eigenvalue;
+export import :matrix.svd;
 
 export import :config;
 
 export namespace lam
 {
-  using lam::linalg::vector;
-  using lam::linalg::matrix;
-}
+using lam::linalg::matrix;
+using lam::linalg::vector;
+} // namespace lam
