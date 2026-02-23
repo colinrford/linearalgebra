@@ -37,6 +37,12 @@ extern "C"
   void cblas_sgemm(const enum CBLAS_ORDER Order, const enum CBLAS_TRANSPOSE TransA, const enum CBLAS_TRANSPOSE TransB,
                    const int M, const int N, const int K, const float alpha, const float* A, const int lda,
                    const float* B, const int ldb, const float beta, float* C, const int ldc);
+  void cblas_zgemm(const enum CBLAS_ORDER Order, const enum CBLAS_TRANSPOSE TransA, const enum CBLAS_TRANSPOSE TransB,
+                   const int M, const int N, const int K, const void* alpha, const void* A, const int lda,
+                   const void* B, const int ldb, const void* beta, void* C, const int ldc);
+  void cblas_cgemm(const enum CBLAS_ORDER Order, const enum CBLAS_TRANSPOSE TransA, const enum CBLAS_TRANSPOSE TransB,
+                   const int M, const int N, const int K, const void* alpha, const void* A, const int lda,
+                   const void* B, const int ldb, const void* beta, void* C, const int ldc);
 }
 
 // Type-safe dispatch helper
@@ -60,6 +66,28 @@ struct blas_dispatcher<float>
                    const float* A, int lda, const float* B, int ldb, float beta, float* C, int ldc)
   {
     cblas_sgemm(Order, TransA, TransB, M, N, K, alpha, A, lda, B, ldb, beta, C, ldc);
+  }
+};
+
+template<>
+struct blas_dispatcher<std::complex<double>>
+{
+  static void gemm(CBLAS_ORDER Order, CBLAS_TRANSPOSE TransA, CBLAS_TRANSPOSE TransB, int M, int N, int K,
+                   std::complex<double> alpha, const std::complex<double>* A, int lda, const std::complex<double>* B,
+                   int ldb, std::complex<double> beta, std::complex<double>* C, int ldc)
+  {
+    cblas_zgemm(Order, TransA, TransB, M, N, K, &alpha, A, lda, B, ldb, &beta, C, ldc);
+  }
+};
+
+template<>
+struct blas_dispatcher<std::complex<float>>
+{
+  static void gemm(CBLAS_ORDER Order, CBLAS_TRANSPOSE TransA, CBLAS_TRANSPOSE TransB, int M, int N, int K,
+                   std::complex<float> alpha, const std::complex<float>* A, int lda, const std::complex<float>* B,
+                   int ldb, std::complex<float> beta, std::complex<float>* C, int ldc)
+  {
+    cblas_cgemm(Order, TransA, TransB, M, N, K, &alpha, A, lda, B, ldb, &beta, C, ldc);
   }
 };
 #endif
@@ -157,7 +185,9 @@ constexpr matrix<T, Alloc, storage_layout::row_major> operator*(const matrix<T, 
   else
   {
     // Hybrid BLAS Config
-    if constexpr (config::use_blas && (std::is_same_v<T, double> || std::is_same_v<T, float>))
+    if constexpr (config::use_blas &&
+                  (std::is_same_v<T, double> || std::is_same_v<T, float> || std::is_same_v<T, std::complex<double>> ||
+                   std::is_same_v<T, std::complex<float>>))
     {
 #ifdef LAM_USE_BLAS
       const auto transA = (LayoutA == storage_layout::row_major) ? CblasNoTrans : CblasTrans;

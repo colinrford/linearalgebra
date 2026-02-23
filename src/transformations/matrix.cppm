@@ -27,7 +27,7 @@ export struct matrix_exception : public std::exception
   };
   struct out_of_bounds : public std::exception
   {
-    const char* what() const noexcept override { return "Index out of bounds."; }
+    const char* what() const noexcept override { return "Index out of matrix bounds."; }
   };
   struct not_invertible : public std::exception
   {

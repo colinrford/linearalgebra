@@ -225,12 +225,29 @@ auto solve_gep(const M& A, const M& B) -> gep_result<typename M::scalar_type>
       }
     }
     else
-    { // Force fallback for small n
-      zhegvd_info = 1;
+    { // Use standard zhegv for small n
+      int lwork = -1;
+      std::complex<double> work_query;
+      vector<double> rwork(std::max(std::size_t(1), 3 * n - 2));
+      vector<double> real_eigenvalues(n);
+
+      zhegv_(&itype, &jobz, &uplo, &n_int, a_data.begin(), &lda, b_data.begin(), &ldb, real_eigenvalues.begin(),
+             &work_query, &lwork, rwork.begin(), &zhegvd_info);
+
+      lwork = static_cast<int>(work_query.real());
+      vector<std::complex<double>> work(static_cast<std::size_t>(lwork));
+
+      zhegv_(&itype, &jobz, &uplo, &n_int, a_data.begin(), &lda, b_data.begin(), &ldb, real_eigenvalues.begin(),
+             work.begin(), &lwork, rwork.begin(), &zhegvd_info);
+
+      if (zhegvd_info == 0)
+      {
+        for (std::size_t i = 0; i < n; ++i)
+          eigenvalues[i] = real_eigenvalues[i];
+      }
     }
-    // Fallback to zggev (General GEP) if zhegvd failed (e.g. B not positive definite)
-    // or if n <= 100 (where we didn't try zhegvd, or prefer QR/General)
-    // Note: zhegvd destroys A and B on failure, so we must re-copy them.
+    // Fallback to zggev (General GEP) if zhegv/zhegvd failed (e.g. B not positive definite)
+    // Note: zhegv/zhegvd destroys A and B on failure, so we must re-copy them.
     if (zhegvd_info != 0)
     { // Re-copy A and B
       if constexpr (M::layout == storage_layout::col_major)

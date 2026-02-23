@@ -46,3 +46,13 @@ target_link_libraries(la_allocator_test PRIVATE linearalgebra lam::concepts)
 
 add_executable(la_test_blas_dispatch vectorspace/test_blas_dispatch.cpp)
 target_link_libraries(la_test_blas_dispatch PRIVATE linearalgebra lam::concepts)
+
+add_executable(test_matrix_svd
+  transformations/test_matrix_svd.cpp
+)
+target_link_libraries(test_matrix_svd PRIVATE linearalgebra lam::concepts)
+
+add_executable(test_matrix_svd_stress
+  transformations/test_matrix_svd_stress.cpp
+)
+target_link_libraries(test_matrix_svd_stress PRIVATE linearalgebra lam::concepts)

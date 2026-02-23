@@ -29,7 +29,7 @@ export struct vector_exception : public std::exception
   };
   struct out_of_bounds : public std::exception
   {
-    const char* what() const noexcept override { return "Index out of bounds.\n"; }
+    const char* what() const noexcept override { return "Index out of vector bounds.\n"; }
   };
   struct null_construction : public std::exception
   {

@@ -8,7 +8,11 @@ target_link_libraries(la_benchmark_matrix_mult PRIVATE linearalgebra lam::concep
 if(APPLE)
   add_executable(la_benchmark_accelerate benchmark_accelerate.cpp)
   target_link_libraries(la_benchmark_accelerate PRIVATE linearalgebra lam::concepts)
-  lam_link_blas(la_benchmark_accelerate) # Ensure it links to BLAS too if needed
+  lam_link_blas(la_benchmark_accelerate)
+
+  add_executable(la_benchmark_svd benchmark_svd.cpp)
+  target_link_libraries(la_benchmark_svd PRIVATE linearalgebra lam::concepts)
+  lam_link_blas(la_benchmark_svd)
 endif()
 
 # Benchmarks
