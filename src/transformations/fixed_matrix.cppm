@@ -271,9 +271,7 @@ constexpr fixed_matrix<T, Rows, Cols> operator*(const T& scalar, const fixed_mat
 
 export template<typename T, std::size_t Rows, std::size_t Cols>
 constexpr fixed_matrix<T, Rows, Cols> operator*(const fixed_matrix<T, Rows, Cols>& m, const T& scalar) noexcept
-{
-  return scalar * m;
-}
+{ return scalar * m; }
 
 export template<typename T, std::size_t Rows, std::size_t Cols>
 constexpr fixed_matrix<T, Rows, Cols> operator/(const fixed_matrix<T, Rows, Cols>& m, const T& scalar) noexcept
@@ -310,9 +308,7 @@ constexpr fixed_matrix<T, 4, 4> scale(const fixed_vector<T, 3>& s) noexcept
 
 export template<typename T>
 constexpr fixed_matrix<T, 4, 4> scale(T s) noexcept
-{
-  return scale(fixed_vector<T, 3>{s, s, s});
-}
+{ return scale(fixed_vector<T, 3>{s, s, s}); }
 
 export template<typename T>
 constexpr fixed_matrix<T, 4, 4> rotate_x(T angle) noexcept

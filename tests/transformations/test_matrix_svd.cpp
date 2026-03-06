@@ -1,3 +1,4 @@
+
 import std;
 import lam.linearalgebra;
 
@@ -7,14 +8,10 @@ using namespace lam;
 
 template<typename T>
 T conj_val(T x)
-{
-  return x;
-}
+{ return x; }
 template<typename T>
 std::complex<T> conj_val(std::complex<T> x)
-{
-  return std::conj(x);
-}
+{ return std::conj(x); }
 
 void require(bool cond, const char* msg)
 {

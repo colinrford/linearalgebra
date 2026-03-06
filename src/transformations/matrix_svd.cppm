@@ -337,14 +337,10 @@ using real_type_t = typename real_of<T>::type;
 // Non-exported module symbols already have module linkage — NOLINT(misc-use-internal-linkage)
 template<typename T>
 T conjugate_of(T x)
-{
-  return x;
-} // NOLINT(misc-use-internal-linkage)
+{ return x; } // NOLINT(misc-use-internal-linkage)
 template<typename T>
 std::complex<T> conjugate_of(std::complex<T> x)
-{
-  return std::conj(x);
-} // NOLINT(misc-use-internal-linkage)
+{ return std::conj(x); } // NOLINT(misc-use-internal-linkage)
 
 /**
  * Per-call SVD error diagnostics.

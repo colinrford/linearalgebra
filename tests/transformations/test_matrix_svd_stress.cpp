@@ -1,3 +1,4 @@
+
 import std;
 import lam.linearalgebra;
 
@@ -28,9 +29,7 @@ template<>
 struct value_gen<std::complex<float>>
 {
   static std::complex<float> get(rng_state& rng)
-  {
-    return {static_cast<float>(rng.dist(rng.engine)), static_cast<float>(rng.dist(rng.engine))};
-  }
+  { return {static_cast<float>(rng.dist(rng.engine)), static_cast<float>(rng.dist(rng.engine))}; }
 };
 
 template<>

@@ -391,9 +391,7 @@ constexpr matrix<T, Alloc, Layout> operator*(const T& scalar, const matrix<T, Al
 
 export template<typename T, typename Alloc, storage_layout Layout>
 constexpr matrix<T, Alloc, Layout> operator*(const matrix<T, Alloc, Layout>& m, const T& scalar)
-{
-  return scalar * m;
-}
+{ return scalar * m; }
 
 export template<typename T, typename Alloc, storage_layout Layout>
 constexpr matrix<T, Alloc, Layout> operator/(const matrix<T, Alloc, Layout>& m, const T& scalar)

@@ -7,11 +7,8 @@
  */
 
 #include <Accelerate/Accelerate.h>
-#include <chrono>
-#include <cmath>
-#include <iostream>
-#include <vector>
 
+import std;
 import lam.linearalgebra;
 
 using namespace lam::linalg;
