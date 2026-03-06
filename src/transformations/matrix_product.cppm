@@ -54,9 +54,7 @@ struct blas_dispatcher<double>
 {
   static void gemm(CBLAS_ORDER Order, CBLAS_TRANSPOSE TransA, CBLAS_TRANSPOSE TransB, int M, int N, int K, double alpha,
                    const double* A, int lda, const double* B, int ldb, double beta, double* C, int ldc)
-  {
-    cblas_dgemm(Order, TransA, TransB, M, N, K, alpha, A, lda, B, ldb, beta, C, ldc);
-  }
+  { cblas_dgemm(Order, TransA, TransB, M, N, K, alpha, A, lda, B, ldb, beta, C, ldc); }
 };
 
 template<>
@@ -64,9 +62,7 @@ struct blas_dispatcher<float>
 {
   static void gemm(CBLAS_ORDER Order, CBLAS_TRANSPOSE TransA, CBLAS_TRANSPOSE TransB, int M, int N, int K, float alpha,
                    const float* A, int lda, const float* B, int ldb, float beta, float* C, int ldc)
-  {
-    cblas_sgemm(Order, TransA, TransB, M, N, K, alpha, A, lda, B, ldb, beta, C, ldc);
-  }
+  { cblas_sgemm(Order, TransA, TransB, M, N, K, alpha, A, lda, B, ldb, beta, C, ldc); }
 };
 
 template<>
@@ -75,9 +71,7 @@ struct blas_dispatcher<std::complex<double>>
   static void gemm(CBLAS_ORDER Order, CBLAS_TRANSPOSE TransA, CBLAS_TRANSPOSE TransB, int M, int N, int K,
                    std::complex<double> alpha, const std::complex<double>* A, int lda, const std::complex<double>* B,
                    int ldb, std::complex<double> beta, std::complex<double>* C, int ldc)
-  {
-    cblas_zgemm(Order, TransA, TransB, M, N, K, &alpha, A, lda, B, ldb, &beta, C, ldc);
-  }
+  { cblas_zgemm(Order, TransA, TransB, M, N, K, &alpha, A, lda, B, ldb, &beta, C, ldc); }
 };
 
 template<>
@@ -86,9 +80,7 @@ struct blas_dispatcher<std::complex<float>>
   static void gemm(CBLAS_ORDER Order, CBLAS_TRANSPOSE TransA, CBLAS_TRANSPOSE TransB, int M, int N, int K,
                    std::complex<float> alpha, const std::complex<float>* A, int lda, const std::complex<float>* B,
                    int ldb, std::complex<float> beta, std::complex<float>* C, int ldc)
-  {
-    cblas_cgemm(Order, TransA, TransB, M, N, K, &alpha, A, lda, B, ldb, &beta, C, ldc);
-  }
+  { cblas_cgemm(Order, TransA, TransB, M, N, K, &alpha, A, lda, B, ldb, &beta, C, ldc); }
 };
 #endif
 
