@@ -6,8 +6,9 @@
  *  benchmark_ranges is a c++ module
  */
 
-import lam.linearalgebra;
 import std;
+import lam.linearalgebra;
+
 
 using namespace lam::linalg;
 using namespace std::chrono;
