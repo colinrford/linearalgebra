@@ -44,6 +44,10 @@ extern "C"
   void zhegv_(const int* itype, const char* jobz, const char* uplo, const int* n, std::complex<double>* a,
               const int* lda, std::complex<double>* b, const int* ldb, double* w, std::complex<double>* work,
               const int* lwork, double* rwork, int* info);
+
+  void zgeev_(const char* jobvl, const char* jobvr, const int* n, std::complex<double>* a, const int* lda,
+              std::complex<double>* w, std::complex<double>* vl, const int* ldvl, std::complex<double>* vr,
+              const int* ldvr, std::complex<double>* work, const int* lwork, double* rwork, int* info);
 }
 #endif
 
@@ -116,7 +120,10 @@ auto solve_gep(const M& A, const M& B) -> gep_result<typename M::scalar_type>
     int ldb = n_int;
     int info = 0;
 
-    // Use Divide and Conquer (dsygvd) for larger matrices (n > 100)
+    // Use Divide and Conquer (dsygvd) for larger matrices.
+    // Crossover at n=100: dsygvd's O(n^2) memory and setup cost outweigh its
+    // O(n^2) vs O(n^3) eigenvector advantage for small matrices. This threshold
+    // is platform-dependent (cache hierarchy, LAPACK implementation).
     if (n > 100)
     {
       int lwork = -1;
@@ -166,8 +173,7 @@ auto solve_gep(const M& A, const M& B) -> gep_result<typename M::scalar_type>
     return {std::move(eigenvalues), std::move(eigenvectors), true};
   }
   else if constexpr (std::is_same_v<T, std::complex<double>>)
-  { // Complex General GEP (zggev)
-    // Note: A and B are copied to column-major format
+  {
     vector<T> a_data(n * n);
     vector<T> b_data(n * n);
 
@@ -181,29 +187,36 @@ auto solve_gep(const M& A, const M& B) -> gep_result<typename M::scalar_type>
     }
 
     vector<T> eigenvalues(n);
-    int itype = 1;
-    char jobz = 'V';
-    char uplo = 'U';
     int n_int = static_cast<int>(n);
     int lda = n_int;
     int ldb = n_int;
-    int info = 0;
 
-    // Use Divide and Conquer (zhegvd) for larger matrices (n > 100)
-    // Try Hermitian solver first
-    int zhegvd_info = 0;
-    if (n > 100)
+    // Check if A is Hermitian before attempting Hermitian solver —
+    // zhegvd_ silently reads only the upper triangle and produces wrong
+    // results for non-Hermitian input (without setting info != 0).
+    bool a_hermitian = true;
+    for (std::size_t i = 0; i < n && a_hermitian; ++i)
+      for (std::size_t j = i + 1; j < n && a_hermitian; ++j)
+        if (std::abs(A[i, j] - std::conj(A[j, i])) > 1e-12 * (std::abs(A[i, j]) + 1.0))
+          a_hermitian = false;
+
+    int hermitian_info = -1; // -1 = not attempted
+    if (a_hermitian)
     {
+      int itype = 1;
+      char jobz = 'V';
+      char uplo = 'U';
+
       int lwork = -1;
-      std::complex<double> work_query;
       int lrwork = -1;
-      double rwork_query;
       int liwork = -1;
+      std::complex<double> work_query;
+      double rwork_query;
       int iwork_query;
 
       zhegvd_(&itype, &jobz, &uplo, &n_int, a_data.begin(), &lda, b_data.begin(), &ldb,
               reinterpret_cast<double*>(eigenvalues.begin()), &work_query, &lwork, &rwork_query, &lrwork, &iwork_query,
-              &liwork, &zhegvd_info);
+              &liwork, &hermitian_info);
 
       lwork = static_cast<int>(work_query.real());
       lrwork = static_cast<int>(rwork_query);
@@ -216,40 +229,19 @@ auto solve_gep(const M& A, const M& B) -> gep_result<typename M::scalar_type>
       vector<double> real_eigenvalues(n);
 
       zhegvd_(&itype, &jobz, &uplo, &n_int, a_data.begin(), &lda, b_data.begin(), &ldb, real_eigenvalues.begin(),
-              work.begin(), &lwork, rwork.begin(), &lrwork, iwork.begin(), &liwork, &zhegvd_info);
+              work.begin(), &lwork, rwork.begin(), &lrwork, iwork.begin(), &liwork, &hermitian_info);
 
-      if (zhegvd_info == 0)
+      if (hermitian_info == 0)
       {
         for (std::size_t i = 0; i < n; ++i)
           eigenvalues[i] = real_eigenvalues[i];
       }
     }
-    else
-    { // Use standard zhegv for small n
-      int lwork = -1;
-      std::complex<double> work_query;
-      vector<double> rwork(std::max(std::size_t(1), 3 * n - 2));
-      vector<double> real_eigenvalues(n);
 
-      zhegv_(&itype, &jobz, &uplo, &n_int, a_data.begin(), &lda, b_data.begin(), &ldb, real_eigenvalues.begin(),
-             &work_query, &lwork, rwork.begin(), &zhegvd_info);
-
-      lwork = static_cast<int>(work_query.real());
-      vector<std::complex<double>> work(static_cast<std::size_t>(lwork));
-
-      zhegv_(&itype, &jobz, &uplo, &n_int, a_data.begin(), &lda, b_data.begin(), &ldb, real_eigenvalues.begin(),
-             work.begin(), &lwork, rwork.begin(), &zhegvd_info);
-
-      if (zhegvd_info == 0)
-      {
-        for (std::size_t i = 0; i < n; ++i)
-          eigenvalues[i] = real_eigenvalues[i];
-      }
-    }
-    // Fallback to zggev (General GEP) if zhegv/zhegvd failed (e.g. B not positive definite)
-    // Note: zhegv/zhegvd destroys A and B on failure, so we must re-copy them.
-    if (zhegvd_info != 0)
-    { // Re-copy A and B
+    // Fallback to zggev if A is not Hermitian or zhegvd_ failed
+    if (hermitian_info != 0)
+    {
+      // Re-copy A and B (zhegvd_ destroys them on failure)
       if constexpr (M::layout == storage_layout::col_major)
       {
         std::copy(A.begin(), A.end(), a_data.begin());
@@ -267,10 +259,11 @@ auto solve_gep(const M& A, const M& B) -> gep_result<typename M::scalar_type>
         }
       }
 
+      int info = 0;
       vector<T> alpha(n);
       vector<T> beta(n);
-      vector<T> vl(n * n); // Left (unused)
-      vector<T> vr(n * n); // Right (used)
+      vector<T> vl(n * n);
+      vector<T> vr(n * n);
       vector<double> rwork(8 * n);
 
       char jobvl = 'N';
@@ -294,8 +287,6 @@ auto solve_gep(const M& A, const M& B) -> gep_result<typename M::scalar_type>
         return {vector<T>{}, matrix<T>{}, false};
       }
 
-      // Process generalized eigenvalues alpha/beta -> lambda
-      // And sort them, because zggev returns them in random order
       struct eigen_pair
       {
         T eigenvalue;
@@ -325,7 +316,6 @@ auto solve_gep(const M& A, const M& B) -> gep_result<typename M::scalar_type>
           eigenvectors[r, i] = vr[r + orig_idx * n];
 
         // Enforce B-normalization: v^H * B * v = 1
-        // Compute dot = v^H * B * v
         T norm_sq = T(0);
         for (std::size_t r = 0; r < n; ++r)
         {
@@ -358,11 +348,6 @@ auto solve_gep(const M& A, const M& B) -> gep_result<typename M::scalar_type>
       }
     }
     return {std::move(eigenvalues), std::move(eigenvectors), true};
-
-    if (info != 0)
-    {
-      return {vector<T>{}, matrix<T>{}, false};
-    }
   }
   else
   {
@@ -442,6 +427,92 @@ auto symmetric_eigen(const M& A) -> eigen_result<double>
     for (std::size_t i = 0; i < n; ++i)
     {
       eigenvectors[i, j] = a_data[i + j * n];
+    }
+  }
+
+  return {std::move(eigenvalues), std::move(eigenvectors), true};
+#else
+  return {vector<T>{}, matrix<T>{}, false};
+#endif
+}
+
+/**
+ * Compute eigenvalues and eigenvectors of a general complex matrix.
+ *
+ * Solves the standard eigenvalue problem A * v = λ * v for arbitrary
+ * (non-Hermitian) complex matrices using LAPACK's zgeev.
+ *
+ * @param A n×n complex matrix
+ * @return eigen_result with complex eigenvalues and eigenvectors
+ */
+export template<typename M>
+  requires std::same_as<typename M::scalar_type, std::complex<double>>
+auto general_complex_eigen(const M& A) -> eigen_result<std::complex<double>>
+{
+  using T = std::complex<double>;
+
+  const std::size_t n = A.rows();
+
+  if (n == 0 || A.cols() != n)
+  {
+    return {vector<T>{}, matrix<T>{}, false};
+  }
+
+#ifdef LAM_USE_BLAS
+  vector<T> a_data(n * n);
+
+  if constexpr (M::layout == storage_layout::col_major)
+  {
+    std::copy(A.begin(), A.end(), a_data.begin());
+  }
+  else
+  {
+    for (std::size_t j = 0; j < n; ++j)
+    {
+      for (std::size_t i = 0; i < n; ++i)
+      {
+        a_data[i + j * n] = A[i, j];
+      }
+    }
+  }
+
+  vector<T> eigenvalues(n);
+  int n_int = static_cast<int>(n);
+  int lda = n_int;
+  int info = 0;
+
+  char jobvl = 'N';
+  char jobvr = 'V';
+  int ldvl = 1;
+  int ldvr = n_int;
+
+  vector<T> vl(1);
+  vector<T> vr(n * n);
+  vector<double> rwork(2 * n);
+
+  // Workspace query
+  int lwork = -1;
+  T work_query;
+  zgeev_(&jobvl, &jobvr, &n_int, a_data.begin(), &lda, eigenvalues.begin(),
+         vl.begin(), &ldvl, vr.begin(), &ldvr, &work_query, &lwork, rwork.begin(), &info);
+
+  lwork = static_cast<int>(work_query.real());
+  vector<T> work(static_cast<std::size_t>(lwork));
+
+  zgeev_(&jobvl, &jobvr, &n_int, a_data.begin(), &lda, eigenvalues.begin(),
+         vl.begin(), &ldvl, vr.begin(), &ldvr, work.begin(), &lwork, rwork.begin(), &info);
+
+  if (info != 0)
+  {
+    return {vector<T>{}, matrix<T>{}, false};
+  }
+
+  matrix<T> eigenvectors(n, n);
+  for (std::size_t j = 0; j < n; ++j)
+  {
+    for (std::size_t i = 0; i < n; ++i)
+    {
+      eigenvectors[i, j] = vr[i + j * n];
     }
   }
 
