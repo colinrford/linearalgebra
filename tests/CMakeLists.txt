@@ -56,3 +56,13 @@ add_executable(test_matrix_svd_stress
   transformations/test_matrix_svd_stress.cpp
 )
 target_link_libraries(test_matrix_svd_stress PRIVATE linearalgebra lam::concepts)
+
+add_executable(la_test_exceptions
+  vectorspace/test_exceptions.cpp
+)
+target_link_libraries(la_test_exceptions PRIVATE linearalgebra lam::concepts)
+
+add_executable(test_matrix_product_fallback
+  transformations/test_matrix_product_fallback.cpp
+)
+target_link_libraries(test_matrix_product_fallback PRIVATE linearalgebra lam::concepts)
