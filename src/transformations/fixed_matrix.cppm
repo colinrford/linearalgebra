@@ -14,10 +14,9 @@
 
 module;
 
-import std;
-
 export module lam.linearalgebra:fixed_matrix;
 
+import std;
 import lam.concepts;
 import :vectorspace.fixed_vector;
 
