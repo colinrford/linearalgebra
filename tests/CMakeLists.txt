@@ -1,68 +1,17 @@
+# Unit/verification tests. linalg_add_test (cmake/LinalgHelpers.cmake) handles the
+# lam::linearalgebra + lam::concepts link and C++23, then registers a ctest.
 
-# Example/Test executable for initial verification
-add_executable(la_test 
-  vectorspace/test_pnorm.cpp
-)
-target_link_libraries(la_test PRIVATE linearalgebra lam::concepts)
-
-add_executable(la_constexpr_test 
-  vectorspace/test_constexpr_verify.cpp
-)
-target_link_libraries(la_constexpr_test PRIVATE linearalgebra lam::concepts)
-
-add_executable(la_concepts_test 
-  transformations/test_matrix_concepts.cpp
-)
-target_link_libraries(la_concepts_test PRIVATE linearalgebra lam::concepts)
-
-add_executable(la_vectorspace_concepts_test
-  vectorspace/test_concepts_verify.cpp
-)
-target_link_libraries(la_vectorspace_concepts_test PRIVATE linearalgebra lam::concepts)
-
-add_executable(la_test_constexpr_blas
-  transformations/test_constexpr_blas.cpp
-)
-target_link_libraries(la_test_constexpr_blas PRIVATE linearalgebra lam::concepts)
-
-add_executable(test_foreign_matrix 
-  transformations/test_foreign_matrix.cpp
-)
-target_link_libraries(test_foreign_matrix PRIVATE linearalgebra lam::concepts)
-
-add_executable(test_matrix_layout
-  transformations/test_matrix_layout.cpp
-)
-target_link_libraries(test_matrix_layout PRIVATE linearalgebra lam::concepts)
-
-
-add_executable(la_math_ops_test vectorspace/test_math_ops.cpp)
-target_link_libraries(la_math_ops_test PRIVATE linearalgebra lam::concepts)
-
-add_executable(la_allocator_test 
-  vectorspace/test_allocator_propagation.cpp
-)
-target_link_libraries(la_allocator_test PRIVATE linearalgebra lam::concepts)
-
-add_executable(la_test_blas_dispatch vectorspace/test_blas_dispatch.cpp)
-target_link_libraries(la_test_blas_dispatch PRIVATE linearalgebra lam::concepts)
-
-add_executable(test_matrix_svd
-  transformations/test_matrix_svd.cpp
-)
-target_link_libraries(test_matrix_svd PRIVATE linearalgebra lam::concepts)
-
-add_executable(test_matrix_svd_stress
-  transformations/test_matrix_svd_stress.cpp
-)
-target_link_libraries(test_matrix_svd_stress PRIVATE linearalgebra lam::concepts)
-
-add_executable(la_test_exceptions
-  vectorspace/test_exceptions.cpp
-)
-target_link_libraries(la_test_exceptions PRIVATE linearalgebra lam::concepts)
-
-add_executable(test_matrix_product_fallback
-  transformations/test_matrix_product_fallback.cpp
-)
-target_link_libraries(test_matrix_product_fallback PRIVATE linearalgebra lam::concepts)
+linalg_add_test(linalg_test                       SOURCE vectorspace/test_pnorm.cpp)
+linalg_add_test(linalg_constexpr_test             SOURCE vectorspace/test_constexpr_verify.cpp)
+linalg_add_test(linalg_concepts_test              SOURCE transformations/test_matrix_concepts.cpp)
+linalg_add_test(linalg_vectorspace_concepts_test  SOURCE vectorspace/test_concepts_verify.cpp)
+linalg_add_test(linalg_test_constexpr_blas        SOURCE transformations/test_constexpr_blas.cpp)
+linalg_add_test(test_foreign_matrix               SOURCE transformations/test_foreign_matrix.cpp)
+linalg_add_test(test_matrix_layout                SOURCE transformations/test_matrix_layout.cpp)
+linalg_add_test(linalg_math_ops_test              SOURCE vectorspace/test_math_ops.cpp)
+linalg_add_test(linalg_allocator_test             SOURCE vectorspace/test_allocator_propagation.cpp)
+linalg_add_test(linalg_test_blas_dispatch         SOURCE vectorspace/test_blas_dispatch.cpp)
+linalg_add_test(test_matrix_svd                   SOURCE transformations/test_matrix_svd.cpp)
+linalg_add_test(test_matrix_svd_stress            SOURCE transformations/test_matrix_svd_stress.cpp)
+linalg_add_test(linalg_test_exceptions            SOURCE vectorspace/test_exceptions.cpp)
+linalg_add_test(test_matrix_product_fallback      SOURCE transformations/test_matrix_product_fallback.cpp)

@@ -13,7 +13,7 @@ set(_LAM_OPENBLAS_DEFAULT OFF)
 set(_LAM_MKL_DEFAULT OFF)
 set(_LAM_AOCL_DEFAULT OFF)
 
-if(APPLE)
+if(APPLE AND NOT CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   set(_LAM_ACCELERATE_DEFAULT ON)
 elseif(WIN32)
   # Windows: prefer MKL if available
@@ -53,9 +53,13 @@ option(LAM_USE_AOCL "Use AMD AOCL (BLIS) backend" ${_LAM_AOCL_DEFAULT})
 option(LAM_USE_OPENBLAS "Use OpenBLAS backend" ${_LAM_OPENBLAS_DEFAULT})
 
 # Determine active backend (priority: Accelerate > MKL > AOCL > OpenBLAS > None)
+# LAM_ACCELERATE_BACKEND records the Accelerate LAPACK ABI variant (lam_link_blas
+# defines ACCELERATE_NEW_LAPACK); it stays empty for non-Accelerate backends.
+set(LAM_ACCELERATE_BACKEND "")
 if(LAM_USE_ACCELERATE)
   set(LAM_USE_BLAS_BOOL "true")
   set(LAM_BLAS_BACKEND "accelerate")
+  set(LAM_ACCELERATE_BACKEND "new_lapack")
 elseif(LAM_USE_MKL)
   find_package(MKL REQUIRED CONFIG)
   set(LAM_USE_BLAS_BOOL "true")

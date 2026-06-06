@@ -1,39 +1,22 @@
+# Benchmarks. linalg_add_executable (cmake/LinalgHelpers.cmake) handles the
+# lam::linearalgebra + lam::concepts link and C++23. Benchmarks are not ctests.
 
-add_executable(la_benchmark_allocator benchmark_allocator.cpp)
-target_link_libraries(la_benchmark_allocator PRIVATE linearalgebra lam::concepts)
+linalg_add_executable(linalg_benchmark_allocator    SOURCE benchmark_allocator.cpp)
+linalg_add_executable(linalg_benchmark_matrix_mult  SOURCE benchmark_matrix_mult.cpp)
 
-add_executable(la_benchmark_matrix_mult benchmark_matrix_mult.cpp)
-target_link_libraries(la_benchmark_matrix_mult PRIVATE linearalgebra lam::concepts)
-
-if(APPLE)
-  add_executable(la_benchmark_accelerate benchmark_accelerate.cpp)
-  target_link_libraries(la_benchmark_accelerate PRIVATE linearalgebra lam::concepts)
-  lam_link_blas(la_benchmark_accelerate)
-
-  add_executable(la_benchmark_svd benchmark_svd.cpp)
-  target_link_libraries(la_benchmark_svd PRIVATE linearalgebra lam::concepts)
-  lam_link_blas(la_benchmark_svd)
+# These exercise the Accelerate/BLAS path directly, so only build them when a
+# BLAS backend is active and link it explicitly (BLAS).
+if(LAM_USE_ACCELERATE)
+  linalg_add_executable(linalg_benchmark_accelerate SOURCE benchmark_accelerate.cpp BLAS)
+  linalg_add_executable(linalg_benchmark_svd        SOURCE benchmark_svd.cpp        BLAS)
 endif()
 
-# Benchmarks
-add_executable(la_benchmark_ranges benchmark_ranges.cpp)
-target_link_libraries(la_benchmark_ranges PRIVATE linearalgebra lam::concepts)
+linalg_add_executable(linalg_benchmark_ranges       SOURCE benchmark_ranges.cpp)
+linalg_add_executable(bench_compile_vector      SOURCE compile_time_vector.cpp)
+linalg_add_executable(bench_compile_r_vector    SOURCE compile_time_r_vector.cpp)
 
-add_executable(bench_compile_vector compile_time_vector.cpp)
-target_link_libraries(bench_compile_vector PRIVATE linearalgebra lam::concepts)
-
-add_executable(bench_compile_r_vector compile_time_r_vector.cpp)
-target_link_libraries(bench_compile_r_vector PRIVATE linearalgebra lam::concepts)
-
-# Algorithm Benchmarks
-add_executable(bench_algorithms benchmark_algorithms.cpp)
-target_link_libraries(bench_algorithms PRIVATE linearalgebra lam::concepts)
-
-add_executable(bench_compile_algo_legacy compile_time_legacy.cpp)
-target_link_libraries(bench_compile_algo_legacy PRIVATE linearalgebra lam::concepts)
-
-add_executable(bench_compile_algo_range compile_time_range.cpp)
-target_link_libraries(bench_compile_algo_range PRIVATE linearalgebra lam::concepts)
-
-add_executable(bench_compile_iota compile_time_iota.cpp)
-target_link_libraries(bench_compile_iota PRIVATE linearalgebra lam::concepts)
+# Algorithm benchmarks
+linalg_add_executable(bench_algorithms          SOURCE benchmark_algorithms.cpp)
+linalg_add_executable(bench_compile_algo_legacy SOURCE compile_time_legacy.cpp)
+linalg_add_executable(bench_compile_algo_range  SOURCE compile_time_range.cpp)
+linalg_add_executable(bench_compile_iota        SOURCE compile_time_iota.cpp)
