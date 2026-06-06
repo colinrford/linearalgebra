@@ -1,8 +1,8 @@
 module;
 
-import std;
-
 export module lam.linearalgebra:config;
+
+import std;
 
 export namespace lam::linalg::config
 {
@@ -21,6 +21,16 @@ export namespace lam::linalg::config
   // Debug Status
   inline constexpr bool is_debug = @IS_DEBUG@;
 
+  // Toolchain (captured at configure time from CMake)
+  inline constexpr std::string_view compiler_id      = "@CMAKE_CXX_COMPILER_ID@";
+  inline constexpr std::string_view compiler_version = "@CMAKE_CXX_COMPILER_VERSION@";
+  inline constexpr std::string_view compiler_path    = "@CMAKE_CXX_COMPILER@";
+  inline constexpr std::string_view system_name      = "@CMAKE_SYSTEM_NAME@";
+  inline constexpr std::string_view system_processor = "@CMAKE_SYSTEM_PROCESSOR@";
+  inline constexpr std::string_view generator        = "@CMAKE_GENERATOR@";
+  inline constexpr std::string_view toolchain_file   = "@CMAKE_TOOLCHAIN_FILE@";
+  inline constexpr std::string_view cxx_flags        = R"_lam_cfg_(@CMAKE_CXX_FLAGS@)_lam_cfg_";
+
   // Accelerate Backend Configuration
   inline constexpr bool use_accelerate = @LAM_USE_ACCELERATE_BOOL@;
   inline constexpr std::string_view accelerate_backend = "@LAM_ACCELERATE_BACKEND@";
@@ -28,4 +38,20 @@ export namespace lam::linalg::config
   // BLAS Backend Configuration
   inline constexpr bool use_blas = @LAM_USE_BLAS_BOOL@;
   inline constexpr std::string_view blas_backend = "@LAM_BLAS_BACKEND@";
+
+  // Human-readable build-config dump. Doubles as the lam_add_config_dump smoke
+  // test (must import lam.linearalgebra and link it to run).
+  void print()
+  {
+    std::println("lam.linearalgebra {}  [{}]", version_string,
+                 build_type.empty() ? std::string_view{"unspecified"} : build_type);
+    std::println("  git        {}{}", git_hash, is_debug ? "  (debug)" : "");
+    std::println("  compiler   {} {}", compiler_id, compiler_version);
+    std::println("  system     {} / {}  [{}]", system_name, system_processor, generator);
+    std::println("  toolchain  {}", toolchain_file.empty() ? std::string_view{"(none)"} : toolchain_file);
+    std::println("  cxx_flags  {}", cxx_flags);
+    std::println("  blas       {} (backend: {})", use_blas, blas_backend);
+    std::println("  accelerate {} (backend: {})", use_accelerate,
+                 accelerate_backend.empty() ? std::string_view{"none"} : accelerate_backend);
+  }
 }
