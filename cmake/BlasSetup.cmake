@@ -80,7 +80,7 @@ endif()
 # Function to link BLAS to a target
 function(lam_link_blas target)
   if(LAM_USE_ACCELERATE)
-    target_compile_definitions(${target} PUBLIC LAM_USE_BLAS ACCELERATE_NEW_LAPACK)
+    target_compile_definitions(${target} PUBLIC LAM_USE_BLAS ACCELERATE_NEW_LAPACK LAM_USE_ACCELERATE)
     target_link_libraries(${target} PUBLIC "-framework Accelerate")
     message(STATUS "${target}: Apple Accelerate backend enabled.")
   elseif(LAM_USE_MKL)
