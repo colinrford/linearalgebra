@@ -113,41 +113,11 @@ if(LAM_LINEARALGEBRA_BUILD_BENCHMARKS)
 endif()
 
 # --- install ----------------------------------------------------------------
-# Hand-rolled install (matches bitvector): package name lam_linearalgebra,
-# target namespace lam_linearalgebra::. CPS (install(PACKAGE_INFO)) is
-# deferred — only the legacy *Config.cmake is emitted for now.
-include(GNUInstallDirs)
-include(CMakePackageConfigHelpers)
-
-install(TARGETS linearalgebra
-  EXPORT lam_linearalgebraTargets
-  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-  FILE_SET CXX_MODULES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/lam/linearalgebra
-)
-
-install(EXPORT lam_linearalgebraTargets
-  FILE lam_linearalgebraTargets.cmake
-  NAMESPACE lam_linearalgebra::
-  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/lam_linearalgebra
-)
-
-# Legacy Config.cmake: pulls in the lam.concepts dependency, then the targets.
-file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/lam_linearalgebraConfig.cmake" [[
-include(CMakeFindDependencyMacro)
-find_dependency(lam_concepts)
-include("${CMAKE_CURRENT_LIST_DIR}/lam_linearalgebraTargets.cmake")
-]])
-
-write_basic_package_version_file(
-  "${CMAKE_CURRENT_BINARY_DIR}/lam_linearalgebraConfigVersion.cmake"
-  VERSION ${PROJECT_VERSION}
-  COMPATIBILITY SameMajorVersion
-)
-
-install(FILES
-  "${CMAKE_CURRENT_BINARY_DIR}/lam_linearalgebraConfig.cmake"
-  "${CMAKE_CURRENT_BINARY_DIR}/lam_linearalgebraConfigVersion.cmake"
-  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/lam_linearalgebra
-)
+# Uniform install via the vendored helper: package lam_linearalgebra, namespace
+# lam_linearalgebra:: (from the target's EXPORT_NAME), legacy *Config.cmake with
+# find_dependency(lam_concepts), CPS gated off by default. linearalgebra is
+# unlicensed for now, so no LICENSE is passed.
+lam_install_module_package(linearalgebra
+  NAME        linearalgebra
+  DESCRIPTION "C++23-module linear algebra (vector spaces, matrices, decompositions, SVD) with optional BLAS/Accelerate backends"
+  REQUIRES    lam_concepts)
