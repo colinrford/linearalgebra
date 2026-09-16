@@ -28,6 +28,9 @@ public:
   using pointer = scalar_type*;
   using const_pointer = const scalar_type*;
 
+  // A throwing ~T() would std::terminate during cleanup; reject it at compile time.
+  static_assert(std::is_nothrow_destructible_v<T>, "lam::linalg::vector requires T to have a non-throwing destructor");
+
 private:
   struct Deleter
   {
