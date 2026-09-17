@@ -38,13 +38,6 @@ private:
     {
       if (p)
       {
-        // Range-based destruction
-        // std::destroy_n is standard range equivalent for raw pointers
-        // But we need to use allocator traits destroy.
-        // Range-based allocator destruction is not standard yet.
-        // We will stick to ranges::for_each over a transformed view?
-        // Or simpler: ranges::for_each on span.
-        // Note: destroy expects valid pointer.
         for (size_type i = 0; i < n; ++i)
         {
           std::allocator_traits<Alloc>::destroy(alloc, p + i);
@@ -69,11 +62,6 @@ public:
     auto* ptr = std::allocator_traits<Alloc>::allocate(m_alloc, dim);
     arrow.reset(ptr);
 
-    // Range-based construction:
-    // We want to construct `dim` elements.
-    // std::ranges::uninitialized_default_construct_n??
-    // BUT we must use Allocator.
-    // So iterating over the allocated range is best.
     std::ranges::for_each(std::span{ptr, dim}, [&](auto& e) { std::allocator_traits<Alloc>::construct(m_alloc, &e); });
   }
 
@@ -85,9 +73,6 @@ public:
     auto* ptr = std::allocator_traits<Alloc>::allocate(m_alloc, m_dimension);
     arrow.reset(ptr);
 
-    // Zip init list and allocated memory
-    // Note: C++23 allows zip view over init_list usually, or we just use iterators.
-    // ranges::for_each(zip(il, span))
     for (auto&& [val, dest] : std::views::zip(il, std::span{ptr, m_dimension}))
     {
       std::allocator_traits<Alloc>::construct(m_alloc, &dest, val);
@@ -179,10 +164,6 @@ public:
 
   constexpr scalar_type pnorm(scalar_type p) const
   {
-    // Ranges pnorm!
-    // sum = fold_left( transform(abs(v), pow(p)), 0, + )
-    // Not standard, but doable.
-    // C++23 fold_left requires <algorithm>
     auto abs_pow = std::views::transform(as_span(), [p](auto val) { return std::pow(std::abs(val), p); });
     scalar_type sum = std::ranges::fold_left(abs_pow, scalar_type{0}, std::plus<scalar_type>{});
     return std::pow(sum, scalar_type{1} / p);
@@ -201,7 +182,6 @@ public:
   constexpr r_vector operator-() const
   {
     r_vector res(*this, m_alloc);
-    // Range transform in place?
     std::ranges::transform(res.as_span(), res.begin(), [](auto val) { return -val; });
     return res;
   }
@@ -211,7 +191,6 @@ public:
     if (m_dimension != other.m_dimension)
       throw vector_exception::plus_equals_unequal_dim();
 
-    // Zip + for_each to add
     for (auto&& [a, b] : std::views::zip(as_span(), other.as_span()))
     {
       a += b;
@@ -243,8 +222,6 @@ public:
 
   constexpr r_vector& operator*=(const scalar_type& s)
   {
-    // transform in place
-    // Or for_each
     std::ranges::for_each(as_span(), [s](auto& val) { val *= s; });
     return *this;
   }
@@ -276,17 +253,11 @@ public:
   constexpr r_vector lerp(const r_vector& other, scalar_type t) const { return lam::linalg::lerp(*this, other, t); }
   constexpr scalar_type distance(const r_vector& other) const { return lam::linalg::distance(*this, other); }
   constexpr bool is_parallel(const r_vector& other, scalar_type tolerance = scalar_type{1e-10}) const
-  {
-    return lam::linalg::is_parallel(*this, other, tolerance);
-  }
+  { return lam::linalg::is_parallel(*this, other, tolerance); }
   constexpr bool is_orthogonal(const r_vector& other, scalar_type tolerance = scalar_type{1e-10}) const
-  {
-    return lam::linalg::is_orthogonal(*this, other, tolerance);
-  }
+  { return lam::linalg::is_orthogonal(*this, other, tolerance); }
   constexpr scalar_type triple_product(const r_vector& b, const r_vector& c) const
-  {
-    return lam::linalg::triple_product(*this, b, c);
-  }
+  { return lam::linalg::triple_product(*this, b, c); }
 };
 
 // Operators
@@ -316,9 +287,7 @@ constexpr r_vector<T, Alloc> operator*(const T& s, const r_vector<T, Alloc>& v)
 
 export template<typename T, typename Alloc>
 constexpr r_vector<T, Alloc> operator*(const r_vector<T, Alloc>& v, const T& s)
-{
-  return s * v;
-}
+{ return s * v; }
 
 export template<typename T, typename Alloc>
 constexpr r_vector<T, Alloc> operator/(const r_vector<T, Alloc>& v, const T& s)

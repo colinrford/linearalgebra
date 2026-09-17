@@ -141,9 +141,14 @@ function(lam_install_module_package target)
     NAMESPACE ${_pkg}::
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${_pkg})
 
-  # Primary CPS (Common Package Specification). Guarded so CMake < 4.3, which
-  # lacks install(PACKAGE_INFO), still configures (legacy *Config.cmake remains).
-  if(CMAKE_VERSION VERSION_GREATER_EQUAL 4.3)
+  # Primary CPS (Common Package Specification). Guarded on CMake >= 4.3 (which
+  # adds install(PACKAGE_INFO)) AND on the opt-in LAM_INSTALL_CPS switch.
+  # Default OFF: CMake >= 4.3 prefers CPS in find_package, but its CPS C++-module
+  # metadata omits cross-package `import` edges, so consumers of an installed
+  # module cannot resolve transitive module deps (e.g. lam.concepts). Opt in with
+  # -DLAM_INSTALL_CPS=ON once CMake emits inter-package C++-module edges.
+  option(LAM_INSTALL_CPS "Install CPS (.cps) package metadata" OFF)
+  if(LAM_INSTALL_CPS AND CMAKE_VERSION VERSION_GREATER_EQUAL 4.3)
     install(PACKAGE_INFO ${_pkg}
       EXPORT       ${_targets}
       VERSION      ${PROJECT_VERSION}

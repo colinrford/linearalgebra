@@ -33,9 +33,7 @@ template<>
 struct blas_vector_dispatcher<double>
 {
   static double dot(int N, const double* X, int incX, const double* Y, int incY)
-  {
-    return cblas_ddot(N, X, incX, Y, incY);
-  }
+  { return cblas_ddot(N, X, incX, Y, incY); }
   static double nrm2(int N, const double* X, int incX) { return cblas_dnrm2(N, X, incX); }
 };
 
@@ -43,9 +41,7 @@ template<>
 struct blas_vector_dispatcher<float>
 {
   static float dot(int N, const float* X, int incX, const float* Y, int incY)
-  {
-    return cblas_sdot(N, X, incX, Y, incY);
-  }
+  { return cblas_sdot(N, X, incX, Y, incY); }
   static float nrm2(int N, const float* X, int incX) { return cblas_snrm2(N, X, incX); }
 };
 #endif
@@ -80,9 +76,12 @@ constexpr typename V::scalar_type dot(const V& a, const V& b)
     return sum;
   };
 
-  if consteval {
+  if consteval
+  {
     return generic_impl();
-  } else {
+  }
+  else
+  {
     if constexpr (config::use_blas && (std::is_same_v<T, double> || std::is_same_v<T, float>))
     {
 #ifdef LAM_USE_BLAS
@@ -115,9 +114,12 @@ constexpr typename V::scalar_type norm2(const V& v)
 {
   using T = typename V::scalar_type;
 
-  if consteval {
+  if consteval
+  {
     return dot(v, v);
-  } else {
+  }
+  else
+  {
     if constexpr (config::use_blas && (std::is_same_v<T, double> || std::is_same_v<T, float>))
     {
 #ifdef LAM_USE_BLAS
@@ -126,12 +128,7 @@ constexpr typename V::scalar_type norm2(const V& v)
         if (v.size() == 0)
           return T{0};
         const T* pv = std::to_address(std::ranges::begin(v));
-        // Use nrm2 squared? No cblas_dnrm2 returns the norm (sqrt(dot(v,v))).
-        // So for norm2 (squared norm), we might just stick to dot(v,v) or square the result of nrm2.
-        // However, dot(v,v) via BLAS (cblas_ddot) is efficient.
-        // Using cblas_dnrm2 involves a square root internally, and then we square it? Wasteful.
-        // Better to use cblas_ddot(v, v) for norm2.
-        // So actually, just calling dot(v, v) is fine because dot is already optimized!
+        // dot(v, v) is already the BLAS path; cblas_dnrm2 would take a sqrt we'd only square again.
         return dot(v, v);
       }
       else
@@ -145,14 +142,16 @@ constexpr typename V::scalar_type norm2(const V& v)
   }
 }
 
-export 
-template<lam::concepts::experimental::vector_c_weak V>
+export template<lam::concepts::experimental::vector_c_weak V>
 constexpr typename V::scalar_type norm(const V& v)
 {
   using T = typename V::scalar_type;
-  if consteval {
+  if consteval
+  {
     return sqrt_helper(norm2(v));
-  } else {
+  }
+  else
+  {
     if constexpr (config::use_blas && (std::is_same_v<T, double> || std::is_same_v<T, float>))
     {
 #ifdef LAM_USE_BLAS
@@ -169,8 +168,7 @@ constexpr typename V::scalar_type norm(const V& v)
   }
 }
 
-export 
-template<std::ranges::range R1, std::ranges::range R2>
+export template<std::ranges::range R1, std::ranges::range R2>
   requires requires(R1 r1, R2 r2, std::size_t i) {
     r1[i];
     r2[i];
@@ -180,7 +178,8 @@ constexpr auto dot_range(const R1& r1, const R2& r2)
 {
   using T = std::common_type_t<std::ranges::range_value_t<R1>, std::ranges::range_value_t<R2>>;
 
-  if consteval { // Use iota-based approach for constexpr (zip has limitations 1/8/26)
+  if consteval
+  { // Use iota-based approach for constexpr (zip has limitations 1/8/26)
     auto n = std::min(r1.size(), r2.size());
     auto indices = std::views::iota(std::size_t{0}, n);
     return std::ranges::fold_left(indices, T{0}, [&](T sum, auto i) { return sum + r1[i] * r2[i]; });
@@ -192,24 +191,24 @@ constexpr auto dot_range(const R1& r1, const R2& r2)
   }
 }
 
-export 
-template<std::ranges::range R>
+export template<std::ranges::range R>
 constexpr auto norm2_range(const R& r)
 { return dot_range(r, r); }
 
-export 
-template<std::ranges::range R>
+export template<std::ranges::range R>
 constexpr auto norm_range(const R& r)
 {
-  if consteval {
+  if consteval
+  {
     return sqrt_helper(norm2_range(r));
-  } else {
+  }
+  else
+  {
     return std::sqrt(norm2_range(r));
   }
 }
 
-export 
-template<lam::concepts::experimental::vector_c_weak V>
+export template<lam::concepts::experimental::vector_c_weak V>
 constexpr typename V::scalar_type distance(const V& a, const V& b)
 {
   using T = typename V::scalar_type;
@@ -222,15 +221,17 @@ constexpr typename V::scalar_type distance(const V& a, const V& b)
     sum += d * d;
   }
 
-  if consteval {
+  if consteval
+  {
     return sqrt_helper(sum);
-  } else {
+  }
+  else
+  {
     return std::sqrt(sum);
   }
 }
 
-export 
-template<std::ranges::range R1, std::ranges::range R2>
+export template<std::ranges::range R1, std::ranges::range R2>
   requires requires(R1 r1, R2 r2, std::size_t i) {
     r1[i];
     r2[i];
@@ -260,8 +261,7 @@ constexpr auto distance_range(const R1& r1, const R2& r2)
   }
 }
 
-export 
-template<lam::concepts::experimental::vector_c_weak V>
+export template<lam::concepts::experimental::vector_c_weak V>
 constexpr typename V::scalar_type angle(const V& a, const V& b)
 {
   using T = typename V::scalar_type;
@@ -292,8 +292,7 @@ constexpr typename V::scalar_type angle(const V& a, const V& b)
   }
 }
 
-export 
-template<lam::concepts::experimental::vector_c_weak V>
+export template<lam::concepts::experimental::vector_c_weak V>
 constexpr V cross(const V& a, const V& b)
 {
   if (a.size() != 3 || b.size() != 3)
@@ -317,16 +316,14 @@ constexpr V cross(const V& a, const V& b)
   }
 }
 
-export 
-template<lam::concepts::experimental::vector_c_weak V>
+export template<lam::concepts::experimental::vector_c_weak V>
 constexpr V lerp(const V& a, const V& b, typename V::scalar_type t)
 {
   using T = typename V::scalar_type;
   return (T{1} - t) * a + t * b;
 }
 
-export 
-template<lam::concepts::experimental::vector_c_weak V>
+export template<lam::concepts::experimental::vector_c_weak V>
 constexpr V project(const V& v, const V& onto)
 {
   using T = typename V::scalar_type;
@@ -337,13 +334,11 @@ constexpr V project(const V& v, const V& onto)
   return s * onto;
 }
 
-export 
-template<lam::concepts::experimental::vector_c_weak V>
+export template<lam::concepts::experimental::vector_c_weak V>
 constexpr V reject(const V& v, const V& from)
 { return v - project(v, from); }
 
-export 
-template<lam::concepts::experimental::vector_c_weak V>
+export template<lam::concepts::experimental::vector_c_weak V>
 constexpr V reflect(const V& v, const V& normal)
 {
   // r = v - 2(v·n̂)n̂  where n̂ is the unit normal
@@ -360,8 +355,7 @@ constexpr V reflect(const V& v, const V& normal)
   return v - scale * n_unit;
 }
 
-export 
-template<lam::concepts::experimental::vector_c_weak V>
+export template<lam::concepts::experimental::vector_c_weak V>
 constexpr V unit(const V& v)
 {
   using T = typename V::scalar_type;
@@ -371,16 +365,14 @@ constexpr V unit(const V& v)
   return (T{1} / n) * v;
 }
 
-export 
-template<lam::concepts::experimental::vector_c_weak V>
+export template<lam::concepts::experimental::vector_c_weak V>
 constexpr V midpoint(const V& a, const V& b)
 {
   using T = typename V::scalar_type;
   return (T{0.5}) * (a + b);
 }
 
-export 
-template<lam::concepts::experimental::vector_c_weak V>
+export template<lam::concepts::experimental::vector_c_weak V>
 constexpr bool is_parallel(const V& a, const V& b, typename V::scalar_type tolerance = typename V::scalar_type{1e-10})
 {
   using T = typename V::scalar_type;
@@ -394,8 +386,7 @@ constexpr bool is_parallel(const V& a, const V& b, typename V::scalar_type toler
   return (T{1} - abs_cos) < tolerance;
 }
 
-export 
-template<lam::concepts::experimental::vector_c_weak V>
+export template<lam::concepts::experimental::vector_c_weak V>
 constexpr bool is_orthogonal(const V& a, const V& b, typename V::scalar_type tolerance = typename V::scalar_type{1e-10})
 {
   using T = typename V::scalar_type;
@@ -409,8 +400,7 @@ constexpr bool is_orthogonal(const V& a, const V& b, typename V::scalar_type tol
   return abs_cos < tolerance;
 }
 
-export 
-template<lam::concepts::experimental::vector_c_weak V>
+export template<lam::concepts::experimental::vector_c_weak V>
 constexpr typename V::scalar_type triple_product(const V& a, const V& b, const V& c)
 { return dot(a, cross(b, c)); }
 

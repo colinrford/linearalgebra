@@ -493,14 +493,14 @@ auto general_complex_eigen(const M& A) -> eigen_result<std::complex<double>>
   // Workspace query
   int lwork = -1;
   T work_query;
-  zgeev_(&jobvl, &jobvr, &n_int, a_data.begin(), &lda, eigenvalues.begin(),
-         vl.begin(), &ldvl, vr.begin(), &ldvr, &work_query, &lwork, rwork.begin(), &info);
+  zgeev_(&jobvl, &jobvr, &n_int, a_data.begin(), &lda, eigenvalues.begin(), vl.begin(), &ldvl, vr.begin(), &ldvr,
+         &work_query, &lwork, rwork.begin(), &info);
 
   lwork = static_cast<int>(work_query.real());
   vector<T> work(static_cast<std::size_t>(lwork));
 
-  zgeev_(&jobvl, &jobvr, &n_int, a_data.begin(), &lda, eigenvalues.begin(),
-         vl.begin(), &ldvl, vr.begin(), &ldvr, work.begin(), &lwork, rwork.begin(), &info);
+  zgeev_(&jobvl, &jobvr, &n_int, a_data.begin(), &lda, eigenvalues.begin(), vl.begin(), &ldvl, vr.begin(), &ldvr,
+         work.begin(), &lwork, rwork.begin(), &info);
 
   if (info != 0)
   {

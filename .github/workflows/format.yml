@@ -1,0 +1,35 @@
+name: format check
+
+# clang-format only: the library itself needs CMake 4.4 + clang 22/libc++ (or GCC 16)
+# for C++23 modules and `import std`, which stock runners do not have.
+on:
+  push:
+    branches: [master]
+    paths: ['src/**', 'tests/**', 'benchmarks/**', '.clang-format', '.github/workflows/format.yml']
+  pull_request:
+    paths: ['src/**', 'tests/**', 'benchmarks/**', '.clang-format', '.github/workflows/format.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  clang-format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # Pinned: clang-format output differs between major versions, so an
+      # unpinned binary would reject formatting that is correct locally.
+      - name: Install clang-format
+        run: pip install clang-format==23.1.1
+
+      - name: Check formatting
+        run: |
+          find src tests benchmarks \
+            \( -name '*.cppm' -o -name '*.cpp' -o -name '*.hpp' \) -print0 \
+            | xargs -0 clang-format --dry-run -Werror
