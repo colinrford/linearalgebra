@@ -35,7 +35,11 @@ export struct matrix_exception : public std::exception
   };
 };
 
-export enum class storage_layout { row_major, col_major };
+export enum class storage_layout
+{
+  row_major,
+  col_major
+};
 
 export template<typename T, typename Alloc = std::allocator<T>, storage_layout Layout = storage_layout::row_major>
   requires lam::concepts::experimental::ring_element_c_weak<T>
