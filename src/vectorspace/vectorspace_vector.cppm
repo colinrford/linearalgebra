@@ -243,12 +243,6 @@ public:
 
   constexpr vector& normalize()
   {
-    // Could define a generic normalize(v) that modifies in place?
-    // Current generic algorithms return new objects (functional).
-    // Let's stick to implementation here or define 'normalize_inplace' generic.
-    // For now, keep local logic or use: *this = unit(); (expensive copy)
-    // Optimization: logic is simple enough to keep or we add generic 'normalize_inplace'.
-    // Sticking to local optimization to avoid copy assignment if possible.
     scalar_type n = norm();
     if (n == scalar_type{0})
       throw vector_exception::div_by_zero();
@@ -265,21 +259,14 @@ public:
   constexpr vector lerp(const vector& other, scalar_type t) const { return lam::linalg::lerp(*this, other, t); }
   constexpr scalar_type distance(const vector& other) const { return lam::linalg::distance(*this, other); }
   constexpr bool is_parallel(const vector& other, scalar_type tolerance = scalar_type{1e-10}) const
-  {
-    return lam::linalg::is_parallel(*this, other, tolerance);
-  }
+  { return lam::linalg::is_parallel(*this, other, tolerance); }
   constexpr bool is_orthogonal(const vector& other, scalar_type tolerance = scalar_type{1e-10}) const
-  {
-    return lam::linalg::is_orthogonal(*this, other, tolerance);
-  }
+  { return lam::linalg::is_orthogonal(*this, other, tolerance); }
   constexpr scalar_type triple_product(const vector& b, const vector& c) const
-  {
-    return lam::linalg::triple_product(*this, b, c);
-  }
+  { return lam::linalg::triple_product(*this, b, c); }
 };
 
-// Operators remain as thin wrappers or can also be genericized?
-// For THIS file (vector class partition), they operate on `vector`.
+// Thin wrappers over the generic algorithms, fixed to `vector`.
 
 export template<typename T, typename Alloc>
 constexpr vector<T, Alloc> operator+(const vector<T, Alloc>& a, const vector<T, Alloc>& b)
@@ -307,9 +294,7 @@ constexpr vector<T, Alloc> operator*(const T& s, const vector<T, Alloc>& v)
 
 export template<typename T, typename Alloc>
 constexpr vector<T, Alloc> operator*(const vector<T, Alloc>& v, const T& s)
-{
-  return s * v;
-}
+{ return s * v; }
 
 export template<typename T, typename Alloc>
 constexpr vector<T, Alloc> operator/(const vector<T, Alloc>& v, const T& s)
@@ -318,14 +303,6 @@ constexpr vector<T, Alloc> operator/(const vector<T, Alloc>& v, const T& s)
   res /= s;
   return res;
 }
-
-// Re-export specific generic algorithms if needed, OR relies on users importing :algorithms?
-// The primary `vectorspace` module will export algorithms.
-// We keep free function wrappers here for ADL if desired?
-// No, removing specific wrappers (dot, cross, etc) from here because they are now in algorithms partition
-// AND exported by the primary module.
-// BUT `vector` users expect `dot(v1, v2)` to work via ADL?
-// The algorithms in `lam::linalg` namespace will be found.
 
 } // namespace lam::linalg
 
