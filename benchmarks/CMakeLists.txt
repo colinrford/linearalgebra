@@ -20,3 +20,11 @@ linalg_add_executable(bench_algorithms          SOURCE benchmark_algorithms.cpp)
 linalg_add_executable(bench_compile_algo_legacy SOURCE compile_time_legacy.cpp)
 linalg_add_executable(bench_compile_algo_range  SOURCE compile_time_range.cpp)
 linalg_add_executable(bench_compile_iota        SOURCE compile_time_iota.cpp)
+
+# Optional google/benchmark micro suite (linalg_gb_*), skipped when gb is absent.
+find_package(benchmark QUIET)
+if(benchmark_FOUND)
+  add_subdirectory(micro)
+else()
+  message(STATUS "google/benchmark not found -- skipping benchmarks/micro (linalg_gb_*)")
+endif()
