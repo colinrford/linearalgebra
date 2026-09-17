@@ -43,3 +43,4 @@ cmake-build*/
 *.tmp
 gcm.cache/
 .cache/
+CMakeUserPresets.json
