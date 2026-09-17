@@ -41,6 +41,35 @@ export enum class storage_layout
   col_major
 };
 
+namespace detail
+{
+// Allocator for a T-valued result derived from M: M's allocator rebound to T, else std::allocator<T>.
+template<typename M, typename T>
+struct result_alloc
+{
+  using type = std::allocator<T>;
+};
+
+template<typename M, typename T>
+  requires requires { typename M::allocator_type; }
+struct result_alloc<M, T>
+{
+  using type = typename std::allocator_traits<typename M::allocator_type>::template rebind_alloc<T>;
+};
+
+template<typename M, typename T = typename M::scalar_type>
+using result_alloc_t = typename result_alloc<M, T>::type;
+
+template<typename M, typename T = typename M::scalar_type>
+constexpr result_alloc_t<M, T> result_allocator(const M& m)
+{
+  if constexpr (requires { m.get_allocator(); })
+    return result_alloc_t<M, T>(m.get_allocator());
+  else
+    return result_alloc_t<M, T>();
+}
+} // namespace detail
+
 export template<typename T, typename Alloc = std::allocator<T>, storage_layout Layout = storage_layout::row_major>
   requires lam::concepts::experimental::ring_element_c_weak<T>
 class matrix;
@@ -146,50 +175,11 @@ public:
     constexpr storage_layout NewLayout =
       (Layout == storage_layout::row_major) ? storage_layout::col_major : storage_layout::row_major;
 
-    matrix<T, Alloc, NewLayout> res(m_cols, m_rows);
+    matrix<T, Alloc, NewLayout> res(m_cols, m_rows, get_allocator());
 
-    // Optimization: Just copy the flat data buffer!
-    // RowMajor(rows, cols) data is identical to ColMajor(cols, rows) data in memory.
-    // e.g.
-    // RowMajor [1 2]
-    //          [3 4]
-    // Data: 1 2 3 4
-    //
-    // Transpose -> ColMajor (2 rows, 2 cols)
-    // [1 3]
-    // [2 4]
-    // WAIT: No.
-    // RowMajor A (2x2):
-    // (0,0)=1, (0,1)=2, (1,0)=3, (1,1)=4
-    // Data: 1, 2, 3, 4
-    //
-    // Transpose of A is A^T.
-    // A^T(0,0)=1, A^T(0,1)=3, A^T(1,0)=2, A^T(1,1)=4
-    //
-    // If we simply copy data 1, 2, 3, 4 into ColMajor B:
-    // B is ColMajor.
-    // Indexing B(i, j) = j * rows + i.
-    // data[0]=1. (j*rows+i=0) -> j=0, i=0. B(0,0)=1. Correct.
-    // data[1]=2. (j*rows+i=1) -> j=0, i=1. B(1,0)=2. Correct (A^T(1,0) should be A(0,1)=2).
-    // data[2]=3. (j*rows+i=2) -> j=1, i=0. B(0,1)=3. Correct (A^T(0,1) should be A(1,0)=3).
-    // data[3]=4. (j*rows+i=3) -> j=1, i=1. B(1,1)=4. Correct.
-    //
-    // YES. Linear copy works to produce the transpose in opposite layout.
-
+    // row_major(r, c) and col_major(c, r) hold the same linear data, so the transpose is a flat copy.
     size_type n = m_rows * m_cols;
-    // We can access private members of same template class (different specialization)
-    // BUT strictly speaking they are different types.
-    // However, we implemented a constructor that allocates.
-    // Let's implement a private helper to just steal/copy data efficiently?
-    // Actually, just use std::copy since we can't easily access private data of converting constructor
-    // without making all specializations friends.
-
-    // For now, let's trust the optimizer on std::copy if we expose iterators,
-    // OR we can declare friend.
-
-    // Let's assume friendship:
     std::copy(m_storage.begin(), m_storage.end(), res.begin());
-    // This requires `res` to expose raw pointer via begin(), which it does.
 
     return res;
   }
@@ -205,7 +195,6 @@ public:
   constexpr const T* cend() const noexcept { return m_storage.cend(); }
 
   // Single row access — returns contiguous span
-  // Single row access
   auto row(size_type i)
   {
     if (i >= m_rows)
@@ -324,7 +313,8 @@ public:
   constexpr matrix operator-() const
   {
     matrix res(*this);
-    res.m_storage = -res.m_storage;
+    for (auto& x : res.m_storage)
+      x = -x;
     return res;
   }
 
@@ -411,7 +401,7 @@ constexpr vector<T, Alloc> operator*(const matrix<T, Alloc, Layout>& m, const ve
 {
   if (m.cols() != v.size())
     throw matrix_exception::dim_mismatch();
-  vector<T, Alloc> res(m.rows());
+  vector<T, Alloc> res(m.rows(), m.get_allocator());
   for (std::size_t i = 0; i < m.rows(); ++i)
   {
     for (std::size_t j = 0; j < m.cols(); ++j)
