@@ -10,6 +10,46 @@ import std;
 import lam.linearalgebra;
 import lam.concepts;
 
+// Counts live allocations; throws bad_alloc once `allow` runs out.
+struct counting_resource : std::pmr::memory_resource
+{
+  std::size_t live = 0;
+  std::size_t allow = std::numeric_limits<std::size_t>::max();
+  void* do_allocate(std::size_t n, std::size_t al) override
+  {
+    if (allow == 0)
+      throw std::bad_alloc();
+    --allow;
+    ++live;
+    return std::pmr::new_delete_resource()->allocate(n, al);
+  }
+  void do_deallocate(void* p, std::size_t n, std::size_t al) override
+  {
+    --live;
+    std::pmr::new_delete_resource()->deallocate(p, n, al);
+  }
+  bool do_is_equal(const std::pmr::memory_resource& o) const noexcept override { return this == &o; }
+};
+
+// Scalar whose constructor throws once its budget runs out.
+struct fussy
+{
+  static inline int budget = 0;
+  double x = 0.0;
+  fussy(double d = 0.0) : x{d}
+  {
+    if (budget-- == 0)
+      throw std::runtime_error("fussy");
+  }
+  fussy(const fussy& o) : fussy(o.x) {}
+  fussy& operator=(const fussy&) = default;
+  fussy operator-() const { return fussy{-x}; }
+  friend fussy operator+(const fussy& l, const fussy& r) { return fussy{l.x + r.x}; }
+  friend fussy operator-(const fussy& l, const fussy& r) { return fussy{l.x - r.x}; }
+  friend fussy operator*(const fussy& l, const fussy& r) { return fussy{l.x * r.x}; }
+  friend bool operator==(const fussy&, const fussy&) = default;
+};
+
 // Helper to check conditions
 void check(bool condition, std::string_view msg)
 {
@@ -114,6 +154,156 @@ int main()
           "Case B: Resources should differ (Default vs Monotonic)");
 
     std::println("Propagation vs Non-Propagation verified");
+  }
+
+  // Test 8: Matrix results adopt the operand's resource, not the default one
+  {
+    using mat_t = matrix<double, storage_layout::row_major, std::pmr::polymorphic_allocator<double>>;
+    mat_t a(2, 3, alloc);
+    mat_t b(3, 2, alloc);
+    vec_t v({1.0, 2.0, 3.0}, alloc);
+
+    check((a * b).get_allocator() == alloc, "matrix*matrix: Allocator not propagated");
+    check(a.transpose().get_allocator() == alloc, "transpose(): Allocator not propagated");
+    check((a * v).get_allocator() == alloc, "matrix*vector: Allocator not propagated");
+
+    std::println("Matrix result propagation passed");
+  }
+
+  // Test 9: raw_vector stays consistent when allocation or construction throws
+  {
+    using raw_t = raw_vector<double, std::pmr::polymorphic_allocator<double>>;
+    counting_resource once;
+    once.allow = 1;
+    std::pmr::polymorphic_allocator<double> throwing{&once};
+
+    // Unequal resources + different size forces a fresh allocation on the target.
+    raw_t target({1.0, 2.0}, throwing);
+    raw_t source({1.0, 2.0, 3.0}, alloc);
+    bool threw = false;
+    try
+    {
+      target = std::move(source);
+    }
+    catch (const std::bad_alloc&)
+    {
+      threw = true;
+    }
+    check(threw, "raw_vector move-assign: expected bad_alloc from exhausted resource");
+    check(target.size() == 2 && target[0] == 1.0 && target[1] == 2.0, "raw_vector move-assign: strong guarantee lost");
+
+    std::println("raw_vector throw safety passed");
+  }
+
+  // Test 10: raw_vector frees partially-built storage when an element ctor throws
+  {
+    counting_resource res;
+    std::pmr::polymorphic_allocator<fussy> falloc{&res};
+    fussy::budget = 2; // third element construction throws
+    bool threw = false;
+    try
+    {
+      raw_vector<fussy, std::pmr::polymorphic_allocator<fussy>> fv(4, falloc);
+    }
+    catch (const std::runtime_error&)
+    {
+      threw = true;
+    }
+    check(threw, "raw_vector ctor: expected element ctor to throw");
+    check(res.live == 0, "raw_vector ctor: storage leaked after element ctor threw");
+
+    std::println("raw_vector ctor rollback passed");
+  }
+
+  // Test 11: LU results, and unary minus, stay on the input's resource
+  {
+    using mat_t = matrix<double, storage_layout::row_major, std::pmr::polymorphic_allocator<double>>;
+    mat_t a(2, 2, alloc);
+    a[0, 0] = 4.0;
+    a[0, 1] = 3.0;
+    a[1, 0] = 6.0;
+    a[1, 1] = 3.0;
+    vec_t b({1.0, 2.0}, alloc);
+    vector<double> b_default({1.0, 2.0});
+
+    check((-a).get_allocator() == alloc, "matrix unary minus: Allocator not propagated");
+    check(crout_lu(a)->lu_decomp.get_allocator() == alloc, "crout_lu: Allocator not propagated");
+    check(crout_lu(a)->permutations.get_allocator() == alloc, "crout_lu perms: Allocator not propagated");
+    check(doolittle_lu(a)->lu_decomp.get_allocator() == alloc, "doolittle_lu: Allocator not propagated");
+    check(crout_lu_solve(a, b).get_allocator() == alloc, "crout_lu_solve: Allocator not propagated");
+    check(crout_lu_solve(a, b_default).get_allocator() == alloc,
+          "crout_lu_solve (default b): Allocator not propagated");
+    check(crout_lu_inv(a).get_allocator() == alloc, "crout_lu_inv: Allocator not propagated");
+
+    std::println("LU propagation passed");
+  }
+
+  // Test 12: assignment works with pmr, keeping each target's own resource
+  {
+    using mat_t = matrix<double, storage_layout::row_major, std::pmr::polymorphic_allocator<double>>;
+    std::array<std::byte, 4096> other_buffer;
+    std::pmr::monotonic_buffer_resource other_pool{other_buffer.data(), other_buffer.size()};
+    std::pmr::polymorphic_allocator<double> other_alloc{&other_pool};
+
+    vec_t a({1.0, 2.0, 3.0}, alloc);
+    vec_t b({4.0, 5.0, 6.0}, other_alloc);
+
+    b = a; // copy-assign across unequal resources
+    check(b[0] == 1.0 && b[2] == 3.0, "pmr copy-assign: values not copied");
+    check(b.get_allocator() == other_alloc, "pmr copy-assign: target must keep its own allocator");
+
+    vec_t c({7.0, 8.0}, other_alloc);
+    c = vec_t({9.0, 9.0, 9.0}, alloc); // move-assign, different size, unequal resources
+    check(c.size() == 3 && c[0] == 9.0, "pmr move-assign: values not moved");
+    check(c.get_allocator() == other_alloc, "pmr move-assign: target must keep its own allocator");
+
+    mat_t m(2, 2, alloc);
+    mat_t n(2, 2, other_alloc);
+    m[0, 0] = 2.0;
+    n = m;
+    check(n[0, 0] == 2.0, "pmr matrix copy-assign: values not copied");
+    check(n.get_allocator() == other_alloc, "pmr matrix assign: target must keep its own allocator");
+
+    mat_t p(2, 2, alloc);
+    p[0, 1] = 5.0;
+    n = p * m;
+    check(n.get_allocator() == other_alloc, "pmr matrix assign from expression: allocator changed");
+
+    std::println("pmr assignment passed");
+  }
+
+  // Test 13: the pmr aliases name the same types, and deduce their resource from the allocator
+  {
+    namespace pmr = lam::linalg::pmr;
+
+    static_assert(std::same_as<pmr::vector<double>, vector<double, std::pmr::polymorphic_allocator<double>>>);
+    static_assert(
+      std::same_as<pmr::r_vector<double>, lam::linalg::r_vector<double, std::pmr::polymorphic_allocator<double>>>);
+    static_assert(
+      std::same_as<pmr::raw_vector<double>, lam::linalg::raw_vector<double, std::pmr::polymorphic_allocator<double>>>);
+    static_assert(std::same_as<pmr::matrix<double>,
+                               matrix<double, storage_layout::row_major, std::pmr::polymorphic_allocator<double>>>);
+    static_assert(std::same_as<pmr::matrix<double, storage_layout::col_major>,
+                               matrix<double, storage_layout::col_major, std::pmr::polymorphic_allocator<double>>>);
+
+    // A resource converts to the allocator, so no allocator type is ever spelled at the call site.
+    std::array<std::byte, 4096> alias_buffer;
+    std::pmr::monotonic_buffer_resource alias_pool{alias_buffer.data(), alias_buffer.size()};
+
+    pmr::vector<double> v({1.0, 2.0, 3.0}, &alias_pool);
+    check(v.size() == 3 && v[2] == 3.0, "pmr::vector alias: values wrong");
+    check(v.get_allocator().resource() == &alias_pool, "pmr::vector alias: resource not adopted");
+
+    pmr::matrix<double> m(2, 2, &alias_pool);
+    m[0, 0] = 4.0;
+    check(m.get_allocator().resource() == &alias_pool, "pmr::matrix alias: resource not adopted");
+
+    // Results of operations stay on the same resource.
+    auto sum = m + m;
+    check(sum[0, 0] == 8.0, "pmr::matrix alias: sum wrong");
+    check(sum.get_allocator().resource() == &alias_pool, "pmr::matrix alias: result left the resource");
+
+    std::println("pmr aliases passed");
   }
 
   std::println("\n✅ All allocator propagation tests passed!");
