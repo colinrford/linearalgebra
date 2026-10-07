@@ -71,9 +71,10 @@ target_sources(linearalgebra
     src/vectorspace/vectorspace.cppm
     src/vectorspace/vectorspace_exceptions.cppm
     src/vectorspace/vectorspace_algorithms.cppm
-    src/vectorspace/vectorspace_vector.cppm
-    src/vectorspace/vectorspace_r_vector.cppm
-    src/vectorspace/vectorspace_fixed_vector.cppm
+    src/vectorspace/vector.cppm
+    src/vectorspace/raw_vector.cppm
+    src/vectorspace/r_vector.cppm
+    src/vectorspace/fixed_vector.cppm
     src/transformations/matrix.cppm
     src/transformations/matrix_product.cppm
     src/transformations/matrix_decomposition.cppm

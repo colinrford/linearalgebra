@@ -17,12 +17,17 @@ import :matrix;
 namespace lam::linalg
 {
 
-// Helper for floating-point comparison
-constexpr bool compare(const double a, const double b)
+// std::abs is not constexpr for floating point before C++26, and LU needs it at compile time.
+constexpr auto abs_helper(auto x)
 {
-  constexpr double epsilon = 4 * std::numeric_limits<double>::epsilon();
-  return std::abs(b - a) < epsilon;
+  using T = decltype(x);
+  return x < T{0} ? -x : x;
 }
+
+// Negligible = lost in the rounding of its own scale; n is a dimensionless operation count.
+template<typename T>
+constexpr bool negligible(const T value, const T scale, const std::size_t n)
+{ return abs_helper(value) <= static_cast<T>(n) * std::numeric_limits<T>::epsilon() * scale; }
 
 /**
  * LU Decomposition result structure.
@@ -31,33 +36,24 @@ constexpr bool compare(const double a, const double b)
 export template<typename T, typename Alloc = std::allocator<T>>
 struct LUdcmp
 {
-  matrix<T, Alloc> lu_decomp;    // Combined L\U matrix (L has unit diagonal)
-  vector<T, Alloc> permutations; // Row permutation indices
-  int parity;                    // +1 or -1 for determinant sign
+  matrix<T, storage_layout::row_major, Alloc> lu_decomp; // Combined L\U matrix (L has unit diagonal)
+  vector<T, Alloc> permutations;                         // Row permutation indices
+  int parity;                                            // +1 or -1 for determinant sign
 
-  LUdcmp(matrix<T, Alloc>&& lu, vector<T, Alloc>&& perms, int p)
+  constexpr LUdcmp(matrix<T, storage_layout::row_major, Alloc>&& lu, vector<T, Alloc>&& perms, int p)
     : lu_decomp{std::move(lu)}, permutations{std::move(perms)}, parity{p}
   {}
 };
 
 namespace detail
 {
-auto make_indexing_set = [](std::size_t n) { return std::views::iota(std::size_t{0}, n); };
+constexpr auto make_indexing_set = [](std::size_t n) { return std::views::iota(std::size_t{0}, n); };
 
-auto make_indexing_set_starting_at = [](std::size_t index, std::size_t size) {
+constexpr auto make_indexing_set_starting_at = [](std::size_t index, std::size_t size) {
   return std::views::iota(index, index + size);
 };
 
-auto make_indexing_set_reverse = [](std::size_t n) { return std::views::reverse(make_indexing_set(n)); };
-
-template<typename M>
-using matrix_scalar_t = typename M::scalar_type;
-
-template<typename M>
-using matrix_alloc_t = typename M::allocator_type;
-// Should add SFINAE or default if allocator_type is missing, but for now assuming it exists or fixing compilation if it
-// breaks. Actually, to be safe for ForeignMatrix, let's use std::allocator if missing? Simpler: Just rely on T and
-// default Alloc for our internal matrix.
+constexpr auto make_indexing_set_reverse = [](std::size_t n) { return std::views::reverse(make_indexing_set(n)); };
 } // namespace detail
 
 /**
@@ -66,10 +62,11 @@ using matrix_alloc_t = typename M::allocator_type;
  */
 export template<typename M>
   requires lam::concepts::experimental::matrix_c_weak<M, typename M::scalar_type>
-auto crout_lu(const M& A) -> std::optional<LUdcmp<typename M::scalar_type>>
+constexpr auto crout_lu(const M& A) -> std::optional<LUdcmp<typename M::scalar_type, detail::result_alloc_t<M>>>
 {
   using T = typename M::scalar_type;
-  using Alloc = std::allocator<T>; // Defaulting to std::allocator for result for simplicity
+  using Alloc = detail::result_alloc_t<M>;
+  const Alloc alloc = detail::result_allocator(A);
 
   if (!A.rows() || A.rows() != A.cols())
     return std::nullopt; // Must be square
@@ -80,11 +77,11 @@ auto crout_lu(const M& A) -> std::optional<LUdcmp<typename M::scalar_type>>
   T big;
   T temp;
   const auto square = detail::make_indexing_set(n);
-  vector<T, Alloc> perms(n);
-  vector<T, Alloc> implicitScalingPerRow(n);
+  vector<T, Alloc> perms(n, alloc);
+  vector<T, Alloc> implicitScalingPerRow(n, alloc);
 
   // Create working copy of matrix (using our implementation)
-  matrix<T, Alloc> lu(n, n);
+  matrix<T, storage_layout::row_major, Alloc> lu(n, n, alloc);
   for (auto i : square)
     for (auto j : square)
       lu[i, j] = A[i, j]; // Assumes M supports [i,j] which concept guarantees
@@ -95,10 +92,11 @@ auto crout_lu(const M& A) -> std::optional<LUdcmp<typename M::scalar_type>>
     big = T{0};
     for (auto j : square)
     {
-      if ((temp = std::abs(lu[i, j])) > big)
+      if ((temp = abs_helper(lu[i, j])) > big)
         big = temp;
     }
-    if (compare(static_cast<double>(big), 0.0))
+    // Exact: a row is unusable only when entirely zero; a uniformly tiny row is still invertible.
+    if (big == T{0})
       return std::nullopt; // Matrix is singular
 
     implicitScalingPerRow[i] = T{1} / big;
@@ -108,10 +106,12 @@ auto crout_lu(const M& A) -> std::optional<LUdcmp<typename M::scalar_type>>
   for (auto k : square)
   {
     big = T{0};
+    // Must be reset: an all-zero remaining column leaves imax stale and swaps factored rows.
+    imax = k;
     auto someIndices = detail::make_indexing_set_starting_at(k, n - k);
     for (auto i : someIndices)
     {
-      temp = implicitScalingPerRow[i] * std::abs(lu[i, k]);
+      temp = implicitScalingPerRow[i] * abs_helper(lu[i, k]);
       if (temp > big)
       {
         big = temp;
@@ -134,10 +134,12 @@ auto crout_lu(const M& A) -> std::optional<LUdcmp<typename M::scalar_type>>
 
     perms[k] = static_cast<T>(imax);
 
-    if (compare(static_cast<double>(lu[k, k]), 0.0))
+    // The reciprocal is row k's own scale, the level the pivot must clear.
+    const T row_scale = T{1} / implicitScalingPerRow[k];
+    if (negligible(lu[k, k], row_scale, n))
     {
-      // Matrix is singular; use tiny pivot
-      lu[k, k] = std::numeric_limits<T>::epsilon();
+      // Matrix is singular; substitute a pivot that is tiny on this row's scale, not absolutely.
+      lu[k, k] = std::numeric_limits<T>::epsilon() * row_scale;
     }
 
     someIndices = detail::make_indexing_set_starting_at(k + 1, n - (k + 1));
@@ -157,7 +159,7 @@ auto crout_lu(const M& A) -> std::optional<LUdcmp<typename M::scalar_type>>
  */
 export template<typename M>
   requires lam::concepts::experimental::matrix_c_weak<M, typename M::scalar_type>
-typename M::scalar_type crout_lu_det(const M& A)
+constexpr typename M::scalar_type crout_lu_det(const M& A)
 {
   using T = typename M::scalar_type;
   auto decomp = crout_lu(A);
@@ -177,16 +179,18 @@ typename M::scalar_type crout_lu_det(const M& A)
 /**
  * Solve linear system Ax = b using Crout LU decomposition.
  */
-export template<typename M>
+export template<typename M, typename BAlloc>
   requires lam::concepts::experimental::matrix_c_weak<M, typename M::scalar_type>
-auto crout_lu_solve(const M& A, const vector<typename M::scalar_type>& b) -> vector<typename M::scalar_type>
+constexpr auto crout_lu_solve(const M& A, const vector<typename M::scalar_type, BAlloc>& b)
+  -> vector<typename M::scalar_type, detail::result_alloc_t<M>>
 {
   using T = typename M::scalar_type;
-  using Alloc = std::allocator<T>;
+  using Alloc = detail::result_alloc_t<M>;
+  const Alloc alloc = detail::result_allocator(A);
 
   auto decomp_opt = crout_lu(A);
   if (!decomp_opt.has_value())
-    return vector<T, Alloc>(b.size()); // Return zero vector on failure
+    return vector<T, Alloc>(b.size(), alloc); // Return zero vector on failure
 
   const auto& decomp = decomp_opt.value();
   const auto& lu = decomp.lu_decomp;
@@ -196,7 +200,7 @@ auto crout_lu_solve(const M& A, const vector<typename M::scalar_type>& b) -> vec
   std::size_t ip;
   std::size_t n = b.size();
   T sum = T{0};
-  vector<T, Alloc> x(n);
+  vector<T, Alloc> x(n, alloc);
 
   // Copy b into x
   for (std::size_t rho = 0; rho < n; ++rho)
@@ -213,8 +217,9 @@ auto crout_lu_solve(const M& A, const vector<typename M::scalar_type>& b) -> vec
       for (std::size_t j = ii - 1; j < i; ++j)
         sum -= lu[i, j] * x[j];
     }
-    else if (!compare(static_cast<double>(sum), 0.0))
+    else if (sum != T{0})
     {
+      // Records where b's leading zeros end; an optimization, not a singularity test.
       ii = i + 1;
     }
     x[i] = sum;
@@ -237,18 +242,20 @@ auto crout_lu_solve(const M& A, const vector<typename M::scalar_type>& b) -> vec
  */
 export template<typename M>
   requires lam::concepts::experimental::matrix_c_weak<M, typename M::scalar_type>
-auto crout_lu_inv(const M& A) -> matrix<typename M::scalar_type>
+constexpr auto crout_lu_inv(const M& A)
+  -> matrix<typename M::scalar_type, storage_layout::row_major, detail::result_alloc_t<M>>
 {
   using T = typename M::scalar_type;
-  using Alloc = std::allocator<T>;
+  using Alloc = detail::result_alloc_t<M>;
+  const Alloc alloc = detail::result_allocator(A);
 
   const std::size_t n = A.rows();
   // Solve for each column of the identity
-  matrix<T, Alloc> inv(n, n);
+  matrix<T, storage_layout::row_major, Alloc> inv(n, n, alloc);
   for (std::size_t j = 0; j < n; ++j)
   {
     // Create column j of identity
-    vector<T, Alloc> e(n);
+    vector<T, Alloc> e(n, alloc);
     for (std::size_t i = 0; i < n; ++i)
       e[i] = (i == j) ? T{1} : T{0};
     // Solve A * x = e_j
@@ -265,10 +272,11 @@ auto crout_lu_inv(const M& A) -> matrix<typename M::scalar_type>
  */
 export template<typename M>
   requires lam::concepts::experimental::matrix_c_weak<M, typename M::scalar_type>
-auto doolittle_lu(const M& A) -> std::optional<LUdcmp<typename M::scalar_type>>
+constexpr auto doolittle_lu(const M& A) -> std::optional<LUdcmp<typename M::scalar_type, detail::result_alloc_t<M>>>
 {
   using T = typename M::scalar_type;
-  using Alloc = std::allocator<T>;
+  using Alloc = detail::result_alloc_t<M>;
+  const Alloc alloc = detail::result_allocator(A);
 
   if (!A.rows() || A.rows() != A.cols())
     return std::nullopt;
@@ -276,7 +284,7 @@ auto doolittle_lu(const M& A) -> std::optional<LUdcmp<typename M::scalar_type>>
   const std::size_t n = A.rows();
   const auto square = detail::make_indexing_set(n);
 
-  matrix<T, Alloc> lu(n, n);
+  matrix<T, storage_layout::row_major, Alloc> lu(n, n, alloc);
   for (auto i : square)
     for (auto j : square)
       lu[i, j] = T{0};
@@ -287,13 +295,20 @@ auto doolittle_lu(const M& A) -> std::optional<LUdcmp<typename M::scalar_type>>
     const auto subsqc = detail::make_indexing_set_starting_at(k, n - k);
     const auto subsqcpo = detail::make_indexing_set_starting_at(k + 1, n - (k + 1));
 
+    T row_scale = T{0};
     for (auto j : subsqc)
     {
       T sum = T{0};
       for (auto p : subsq)
         sum += lu[k, p] * lu[p, j];
       lu[k, j] = A[k, j] - sum;
+      if (abs_helper(lu[k, j]) > row_scale)
+        row_scale = abs_helper(lu[k, j]);
     }
+    // Doolittle does not pivot: a zero diagonal is fatal, and the divide below would yield inf/nan.
+    if (row_scale == T{0} || negligible(lu[k, k], row_scale, n))
+      return std::nullopt;
+
     for (auto i : subsqcpo)
     {
       T sum = T{0};
@@ -303,7 +318,7 @@ auto doolittle_lu(const M& A) -> std::optional<LUdcmp<typename M::scalar_type>>
     }
   }
 
-  vector<T, Alloc> perms(n);
+  vector<T, Alloc> perms(n, alloc);
   for (std::size_t i = 0; i < n; ++i)
     perms[i] = static_cast<T>(i);
 
@@ -315,7 +330,7 @@ auto doolittle_lu(const M& A) -> std::optional<LUdcmp<typename M::scalar_type>>
  */
 export template<typename M>
   requires lam::concepts::experimental::matrix_c_weak<M, typename M::scalar_type>
-typename M::scalar_type doolittle_lu_det(const M& A)
+constexpr typename M::scalar_type doolittle_lu_det(const M& A)
 {
   using T = typename M::scalar_type;
   auto decomp = doolittle_lu(A);

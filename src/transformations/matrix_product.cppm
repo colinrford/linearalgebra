@@ -85,9 +85,9 @@ struct blas_dispatcher<std::complex<float>>
 #endif
 
 // Helper for generic multiplication (constexpr-compatible)
-template<typename T, typename Alloc, storage_layout LayoutA, storage_layout LayoutB>
-constexpr void generic_matrix_multiply(const matrix<T, Alloc, LayoutA>& a, const matrix<T, Alloc, LayoutB>& b,
-                                       matrix<T, Alloc, storage_layout::row_major>& res)
+template<typename T, storage_layout LayoutA, storage_layout LayoutB, typename A1, typename A2>
+constexpr void generic_matrix_multiply(const matrix<T, LayoutA, A1>& a, const matrix<T, LayoutB, A2>& b,
+                                       matrix<T, storage_layout::row_major, A1>& res)
 {
   // Case 1: RowMajor * ColMajor -> Inner Product Loop (i, j, k)
   if constexpr (LayoutA == storage_layout::row_major && LayoutB == storage_layout::col_major)
@@ -161,14 +161,14 @@ constexpr void generic_matrix_multiply(const matrix<T, Alloc, LayoutA>& a, const
   }
 }
 
-export template<typename T, typename Alloc, storage_layout LayoutA, storage_layout LayoutB>
-constexpr matrix<T, Alloc, storage_layout::row_major> operator*(const matrix<T, Alloc, LayoutA>& a,
-                                                                const matrix<T, Alloc, LayoutB>& b)
+export template<typename T, storage_layout LayoutA, storage_layout LayoutB, typename A1, typename A2>
+constexpr matrix<T, storage_layout::row_major, A1> operator*(const matrix<T, LayoutA, A1>& a,
+                                                             const matrix<T, LayoutB, A2>& b)
 {
   if (a.cols() != b.rows())
     throw matrix_exception::dim_mismatch();
 
-  matrix<T, Alloc, storage_layout::row_major> res(a.rows(), b.cols());
+  matrix<T, storage_layout::row_major, A1> res(a.rows(), b.cols(), a.get_allocator());
 
   if consteval
   {

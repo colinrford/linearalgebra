@@ -17,6 +17,102 @@ import :config;
 namespace lam::linalg
 {
 
+namespace detail
+{
+// Guards the trait lookups below: allocator_traits<T> is a hard error for a T that is not one.
+template<typename Alloc>
+concept allocator_shaped = requires { typename Alloc::value_type; };
+
+// Move-assignment adopts the source's allocator.
+template<typename Alloc>
+concept propagates_on_move_assignment =
+  allocator_shaped<Alloc> && std::allocator_traits<Alloc>::propagate_on_container_move_assignment::value;
+
+// Move-assignment can always take the source's storage, so it never allocates.
+template<typename Alloc>
+concept steals_on_move_assignment = propagates_on_move_assignment<Alloc> ||
+                                    (allocator_shaped<Alloc> && std::allocator_traits<Alloc>::is_always_equal::value);
+
+// Copy-assignment adopts the source's allocator. lam does not honour this; the target keeps its own.
+template<typename Alloc>
+concept propagates_on_copy_assignment =
+  allocator_shaped<Alloc> && std::allocator_traits<Alloc>::propagate_on_container_copy_assignment::value;
+
+// Swap exchanges the allocators.
+template<typename Alloc>
+concept propagates_on_swap =
+  allocator_shaped<Alloc> && std::allocator_traits<Alloc>::propagate_on_container_swap::value;
+// Swap can always exchange storage, so it never throws.
+template<typename Alloc>
+concept steals_on_swap =
+  propagates_on_swap<Alloc> || (allocator_shaped<Alloc> && std::allocator_traits<Alloc>::is_always_equal::value);
+
+// The allocator customizes what a copy construction gets. lam does not honour this; it copies the source's.
+// A custom std::allocator_traits specialization that supplies it is NOT visible here.
+template<typename Alloc>
+concept selects_on_copy_construction = requires(const Alloc& a) {
+  { a.select_on_container_copy_construction() } -> std::convertible_to<Alloc>;
+};
+
+// Verifies the guard: a non-allocator must be false rather than a hard error in allocator_traits.
+static_assert(!propagates_on_move_assignment<int> && !steals_on_move_assignment<int> &&
+              !propagates_on_copy_assignment<int> && !propagates_on_swap<int> && !selects_on_copy_construction<int>);
+static_assert(propagates_on_move_assignment<std::allocator<double>>);
+static_assert(!propagates_on_copy_assignment<std::allocator<double>>);
+static_assert(selects_on_copy_construction<std::pmr::polymorphic_allocator<double>>);
+
+// Allocate n elements, constructing slot i via make(p, i); rolls back fully if anything throws.
+template<typename Alloc>
+constexpr auto build_storage(Alloc& alloc, std::size_t n, auto&& make) -> std::allocator_traits<Alloc>::value_type*
+{
+  auto* p = std::allocator_traits<Alloc>::allocate(alloc, n);
+  std::size_t built = 0;
+  try
+  {
+    for (; built < n; ++built)
+      make(p + built, built);
+  }
+  catch (...)
+  {
+    while (built > 0)
+      std::allocator_traits<Alloc>::destroy(alloc, p + --built);
+    std::allocator_traits<Alloc>::deallocate(alloc, p, n);
+    throw;
+  }
+  return p;
+}
+
+// A copy of src as a V, allocated like proto.
+template<typename V, typename Src, typename Proto>
+constexpr V rebound_copy(const Src& src, const Proto& proto)
+{
+  if constexpr (requires { proto.get_allocator(); })
+    return V(src, proto.get_allocator());
+  else
+    return V(src);
+}
+} // namespace detail
+
+// Derived, not picked: a hand-picked 1e-10 sits below float's epsilon and breaks is_parallel.
+export template<typename T>
+inline constexpr T default_angle_tolerance = T{8} * std::numeric_limits<T>::epsilon();
+
+// Two vector types over the same scalars; the result takes the LEFT operand's type.
+export template<typename V1, typename V2>
+concept compatible_vectors_c_weak =
+  lam::concepts::experimental::vector_c_weak<V1> && lam::concepts::experimental::vector_c_weak<V2> &&
+  std::same_as<typename V1::scalar_type, typename V2::scalar_type>;
+
+// The zero of v's own space: same dimension, same allocator.
+export template<typename V>
+  requires requires(const V& v) {
+    typename V::scalar_type;
+    v.size();
+    v.get_allocator();
+  }
+constexpr V zero_like(const V& v)
+{ return V(v.size(), v.get_allocator()); }
+
 #ifdef LAM_USE_BLAS
 extern "C"
 {
@@ -61,15 +157,16 @@ constexpr auto sqrt_helper(auto x)
   return g;
 }
 
-export template<lam::concepts::experimental::vector_c_weak V>
-constexpr typename V::scalar_type dot(const V& a, const V& b)
+export template<typename V1, typename V2>
+  requires compatible_vectors_c_weak<V1, V2>
+constexpr typename V1::scalar_type dot(const V1& a, const V2& b)
 {
-  using T = typename V::scalar_type;
-  typename V::size_type min_dim = std::min(a.size(), b.size());
+  using T = typename V1::scalar_type;
+  std::size_t min_dim = std::min<std::size_t>(a.size(), b.size());
 
   auto generic_impl = [&]() {
     T sum = T{0};
-    for (typename V::size_type i = 0; i < min_dim; ++i)
+    for (std::size_t i = 0; i < min_dim; ++i)
     {
       sum += a[i] * b[i];
     }
@@ -85,7 +182,7 @@ constexpr typename V::scalar_type dot(const V& a, const V& b)
     if constexpr (config::use_blas && (std::is_same_v<T, double> || std::is_same_v<T, float>))
     {
 #ifdef LAM_USE_BLAS
-      if constexpr (std::ranges::contiguous_range<V>)
+      if constexpr (std::ranges::contiguous_range<V1> && std::ranges::contiguous_range<V2>)
       {
         if (min_dim == 0)
           return T{0};
@@ -208,14 +305,15 @@ constexpr auto norm_range(const R& r)
   }
 }
 
-export template<lam::concepts::experimental::vector_c_weak V>
-constexpr typename V::scalar_type distance(const V& a, const V& b)
+export template<typename V1, typename V2>
+  requires compatible_vectors_c_weak<V1, V2>
+constexpr typename V1::scalar_type distance(const V1& a, const V2& b)
 {
-  using T = typename V::scalar_type;
-  typename V::size_type min_dim = std::min(a.size(), b.size());
+  using T = typename V1::scalar_type;
+  std::size_t min_dim = std::min<std::size_t>(a.size(), b.size());
   T sum = T{0};
 
-  for (typename V::size_type i = 0; i < min_dim; ++i)
+  for (std::size_t i = 0; i < min_dim; ++i)
   {
     T d = static_cast<T>(a[i]) - static_cast<T>(b[i]);
     sum += d * d;
@@ -261,10 +359,11 @@ constexpr auto distance_range(const R1& r1, const R2& r2)
   }
 }
 
-export template<lam::concepts::experimental::vector_c_weak V>
-constexpr typename V::scalar_type angle(const V& a, const V& b)
+export template<typename V1, typename V2>
+  requires compatible_vectors_c_weak<V1, V2>
+constexpr typename V1::scalar_type angle(const V1& a, const V2& b)
 {
-  using T = typename V::scalar_type;
+  using T = typename V1::scalar_type;
   T n1 = norm(a);
   T n2 = norm(b);
   if (n1 == T{0} || n2 == T{0})
@@ -292,15 +391,16 @@ constexpr typename V::scalar_type angle(const V& a, const V& b)
   }
 }
 
-export template<lam::concepts::experimental::vector_c_weak V>
-constexpr V cross(const V& a, const V& b)
+export template<typename V1, typename V2>
+  requires compatible_vectors_c_weak<V1, V2>
+constexpr V1 cross(const V1& a, const V2& b)
 {
   if (a.size() != 3 || b.size() != 3)
     throw vector_exception::cross_undef();
 
   if constexpr (requires { a.get_allocator(); })
   {
-    V res(3, a.get_allocator());
+    V1 res(3, a.get_allocator());
     res[0] = a[1] * b[2] - a[2] * b[1];
     res[1] = a[2] * b[0] - a[0] * b[2];
     res[2] = a[0] * b[1] - a[1] * b[0];
@@ -308,7 +408,7 @@ constexpr V cross(const V& a, const V& b)
   }
   else
   {
-    V res(3);
+    V1 res(3);
     res[0] = a[1] * b[2] - a[2] * b[1];
     res[1] = a[2] * b[0] - a[0] * b[2];
     res[2] = a[0] * b[1] - a[1] * b[0];
@@ -316,43 +416,52 @@ constexpr V cross(const V& a, const V& b)
   }
 }
 
-export template<lam::concepts::experimental::vector_c_weak V>
-constexpr V lerp(const V& a, const V& b, typename V::scalar_type t)
+export template<typename V1, typename V2>
+  requires compatible_vectors_c_weak<V1, V2>
+constexpr V1 lerp(const V1& a, const V2& b, typename V1::scalar_type t)
 {
-  using T = typename V::scalar_type;
-  return (T{1} - t) * a + t * b;
+  using T = typename V1::scalar_type;
+  V1 res = detail::rebound_copy<V1>(b, a);
+  res *= t;
+  res += (T{1} - t) * a;
+  return res;
 }
 
-export template<lam::concepts::experimental::vector_c_weak V>
-constexpr V project(const V& v, const V& onto)
+export template<typename V1, typename V2>
+  requires compatible_vectors_c_weak<V1, V2>
+constexpr V1 project(const V1& v, const V2& onto)
 {
-  using T = typename V::scalar_type;
+  using T = typename V1::scalar_type;
   T on2 = norm2(onto);
   if (on2 == T{0})
     throw vector_exception::div_by_zero();
   T s = dot(v, onto) / on2;
-  return s * onto;
+  V1 res = detail::rebound_copy<V1>(onto, v);
+  res *= s;
+  return res;
 }
 
-export template<lam::concepts::experimental::vector_c_weak V>
-constexpr V reject(const V& v, const V& from)
+export template<typename V1, typename V2>
+  requires compatible_vectors_c_weak<V1, V2>
+constexpr V1 reject(const V1& v, const V2& from)
 { return v - project(v, from); }
 
-export template<lam::concepts::experimental::vector_c_weak V>
-constexpr V reflect(const V& v, const V& normal)
+export template<typename V1, typename V2>
+  requires compatible_vectors_c_weak<V1, V2>
+constexpr V1 reflect(const V1& v, const V2& normal)
 {
   // r = v - 2(v·n̂)n̂  where n̂ is the unit normal
-  using T = typename V::scalar_type;
+  using T = typename V1::scalar_type;
   T n = norm(normal);
   if (n == T{0})
     throw vector_exception::div_by_zero();
 
-  // Scale normal to unit length
-  V n_unit = normal;
-  n_unit = (T{1} / n) * n_unit;
+  V1 n_unit = detail::rebound_copy<V1>(normal, v);
+  n_unit *= T{1} / n;
 
   T scale = T{2} * dot(v, n_unit);
-  return v - scale * n_unit;
+  n_unit *= scale;
+  return v - n_unit;
 }
 
 export template<lam::concepts::experimental::vector_c_weak V>
@@ -365,17 +474,22 @@ constexpr V unit(const V& v)
   return (T{1} / n) * v;
 }
 
-export template<lam::concepts::experimental::vector_c_weak V>
-constexpr V midpoint(const V& a, const V& b)
+export template<typename V1, typename V2>
+  requires compatible_vectors_c_weak<V1, V2>
+constexpr V1 midpoint(const V1& a, const V2& b)
 {
-  using T = typename V::scalar_type;
-  return (T{0.5}) * (a + b);
+  using T = typename V1::scalar_type;
+  V1 res = a + b;
+  res *= T{0.5};
+  return res;
 }
 
-export template<lam::concepts::experimental::vector_c_weak V>
-constexpr bool is_parallel(const V& a, const V& b, typename V::scalar_type tolerance = typename V::scalar_type{1e-10})
+export template<typename V1, typename V2>
+  requires compatible_vectors_c_weak<V1, V2>
+constexpr bool is_parallel(const V1& a, const V2& b,
+                           typename V1::scalar_type tolerance = default_angle_tolerance<typename V1::scalar_type>)
 {
-  using T = typename V::scalar_type;
+  using T = typename V1::scalar_type;
   T n1 = norm(a);
   T n2 = norm(b);
   if (n1 == T{0} || n2 == T{0})
@@ -386,10 +500,12 @@ constexpr bool is_parallel(const V& a, const V& b, typename V::scalar_type toler
   return (T{1} - abs_cos) < tolerance;
 }
 
-export template<lam::concepts::experimental::vector_c_weak V>
-constexpr bool is_orthogonal(const V& a, const V& b, typename V::scalar_type tolerance = typename V::scalar_type{1e-10})
+export template<typename V1, typename V2>
+  requires compatible_vectors_c_weak<V1, V2>
+constexpr bool is_orthogonal(const V1& a, const V2& b,
+                             typename V1::scalar_type tolerance = default_angle_tolerance<typename V1::scalar_type>)
 {
-  using T = typename V::scalar_type;
+  using T = typename V1::scalar_type;
   T n1 = norm(a);
   T n2 = norm(b);
   if (n1 == T{0} || n2 == T{0})
@@ -400,8 +516,9 @@ constexpr bool is_orthogonal(const V& a, const V& b, typename V::scalar_type tol
   return abs_cos < tolerance;
 }
 
-export template<lam::concepts::experimental::vector_c_weak V>
-constexpr typename V::scalar_type triple_product(const V& a, const V& b, const V& c)
+export template<typename V1, typename V2, typename V3>
+  requires compatible_vectors_c_weak<V1, V2> && compatible_vectors_c_weak<V1, V3>
+constexpr typename V1::scalar_type triple_product(const V1& a, const V2& b, const V3& c)
 { return dot(a, cross(b, c)); }
 
 } // namespace lam::linalg

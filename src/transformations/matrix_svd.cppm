@@ -41,29 +41,32 @@ extern "C"
 export template<typename T, typename Alloc = std::allocator<T>>
 struct svd_result
 {
-  matrix<T, Alloc> u;
+  matrix<T, storage_layout::row_major, Alloc> u;
   vector<std::conditional_t<std::is_same_v<T, std::complex<double>>, double,
                             std::conditional_t<std::is_same_v<T, std::complex<float>>, float, T>>,
          typename std::allocator_traits<Alloc>::template rebind_alloc<
            std::conditional_t<std::is_same_v<T, std::complex<double>>, double,
                               std::conditional_t<std::is_same_v<T, std::complex<float>>, float, T>>>>
     s;
-  matrix<T, Alloc> vt;
+  matrix<T, storage_layout::row_major, Alloc> vt;
 
-  svd_result(matrix<T, Alloc>&& u_in, decltype(s)&& s_in, matrix<T, Alloc>&& vt_in)
+  svd_result(matrix<T, storage_layout::row_major, Alloc>&& u_in, decltype(s)&& s_in,
+             matrix<T, storage_layout::row_major, Alloc>&& vt_in)
     : u(std::move(u_in)), s(std::move(s_in)), vt(std::move(vt_in))
   {}
 }; // NOLINTEND(misc-non-private-member-variables-in-classes)
 
 export template<typename M>
   requires lam::concepts::experimental::matrix_c_weak<M, typename M::scalar_type>
-auto svd(const M& A) -> std::optional<svd_result<typename M::scalar_type>>
+auto svd(const M& A) -> std::optional<svd_result<typename M::scalar_type, detail::result_alloc_t<M>>>
 {
   using T = typename M::scalar_type;
-  using Alloc = std::allocator<T>;
+  using Alloc = detail::result_alloc_t<M>;
   using RealT = std::conditional_t<std::is_same_v<T, std::complex<double>>, double,
                                    std::conditional_t<std::is_same_v<T, std::complex<float>>, float, T>>;
   using RealAlloc = typename std::allocator_traits<Alloc>::template rebind_alloc<RealT>;
+  const Alloc alloc = detail::result_allocator(A);
+  const RealAlloc ralloc(alloc);
 
 #ifdef LAM_USE_BLAS
   if constexpr (std::is_same_v<T, float> || std::is_same_v<T, double> || std::is_same_v<T, std::complex<float>> ||
@@ -76,7 +79,7 @@ auto svd(const M& A) -> std::optional<svd_result<typename M::scalar_type>>
       return std::nullopt;
     }
 
-    matrix<T, Alloc> a_copy(m, n);
+    matrix<T, storage_layout::row_major, Alloc> a_copy(m, n, alloc);
     for (int i = 0; i < m; ++i)
     {
       for (int j = 0; j < n; ++j)
@@ -89,9 +92,9 @@ auto svd(const M& A) -> std::optional<svd_result<typename M::scalar_type>>
     int lap_n = m;
     int lda = n;
 
-    matrix<T, Alloc> u(m, m);
-    matrix<T, Alloc> vt(n, n);
-    vector<RealT, RealAlloc> s(std::min(m, n));
+    matrix<T, storage_layout::row_major, Alloc> u(m, m, alloc);
+    matrix<T, storage_layout::row_major, Alloc> vt(n, n, alloc);
+    vector<RealT, RealAlloc> s(std::min(m, n), ralloc);
 
     char jobu = 'A';
     char jobvt = 'A';
@@ -99,7 +102,7 @@ auto svd(const M& A) -> std::optional<svd_result<typename M::scalar_type>>
     int ldvt = m;
     int info = 0;
 
-    T work_query;
+    T work_query{};
     int lwork = -1;
 
     // Required rwork size for complex gesvd: 5 * min(m, n)
@@ -110,8 +113,11 @@ auto svd(const M& A) -> std::optional<svd_result<typename M::scalar_type>>
       sgesvd_(&jobu, &jobvt, &lap_m, &lap_n, a_copy.begin(), &lda, s.begin(), vt.begin(), &ldu, u.begin(), &ldvt,
               &work_query, &lwork, &info);
 
-      lwork = static_cast<int>(work_query);
-      vector<T, Alloc> work(lwork);
+      const auto lw = detail::checked_lwork(work_query, info);
+      if (!lw)
+        return std::nullopt;
+      lwork = *lw;
+      vector<T, Alloc> work(static_cast<std::size_t>(lwork), alloc);
 
       sgesvd_(&jobu, &jobvt, &lap_m, &lap_n, a_copy.begin(), &lda, s.begin(), vt.begin(), &ldu, u.begin(), &ldvt,
               work.begin(), &lwork, &info);
@@ -121,34 +127,43 @@ auto svd(const M& A) -> std::optional<svd_result<typename M::scalar_type>>
       dgesvd_(&jobu, &jobvt, &lap_m, &lap_n, a_copy.begin(), &lda, s.begin(), vt.begin(), &ldu, u.begin(), &ldvt,
               &work_query, &lwork, &info);
 
-      lwork = static_cast<int>(work_query);
-      vector<T, Alloc> work(lwork);
+      const auto lw = detail::checked_lwork(work_query, info);
+      if (!lw)
+        return std::nullopt;
+      lwork = *lw;
+      vector<T, Alloc> work(static_cast<std::size_t>(lwork), alloc);
 
       dgesvd_(&jobu, &jobvt, &lap_m, &lap_n, a_copy.begin(), &lda, s.begin(), vt.begin(), &ldu, u.begin(), &ldvt,
               work.begin(), &lwork, &info);
     }
     else if constexpr (std::is_same_v<T, std::complex<float>>)
     {
-      vector<RealT, RealAlloc> rwork(rwork_factor * std::min(m, n));
+      vector<RealT, RealAlloc> rwork(rwork_factor * std::min(m, n), ralloc);
 
       cgesvd_(&jobu, &jobvt, &lap_m, &lap_n, a_copy.begin(), &lda, s.begin(), vt.begin(), &ldu, u.begin(), &ldvt,
               &work_query, &lwork, rwork.begin(), &info);
 
-      lwork = static_cast<int>(work_query.real());
-      vector<T, Alloc> work(lwork);
+      const auto lw = detail::checked_lwork(work_query.real(), info);
+      if (!lw)
+        return std::nullopt;
+      lwork = *lw;
+      vector<T, Alloc> work(static_cast<std::size_t>(lwork), alloc);
 
       cgesvd_(&jobu, &jobvt, &lap_m, &lap_n, a_copy.begin(), &lda, s.begin(), vt.begin(), &ldu, u.begin(), &ldvt,
               work.begin(), &lwork, rwork.begin(), &info);
     }
     else if constexpr (std::is_same_v<T, std::complex<double>>)
     {
-      vector<RealT, RealAlloc> rwork(rwork_factor * std::min(m, n));
+      vector<RealT, RealAlloc> rwork(rwork_factor * std::min(m, n), ralloc);
 
       zgesvd_(&jobu, &jobvt, &lap_m, &lap_n, a_copy.begin(), &lda, s.begin(), vt.begin(), &ldu, u.begin(), &ldvt,
               &work_query, &lwork, rwork.begin(), &info);
 
-      lwork = static_cast<int>(work_query.real());
-      vector<T, Alloc> work(lwork);
+      const auto lw = detail::checked_lwork(work_query.real(), info);
+      if (!lw)
+        return std::nullopt;
+      lwork = *lw;
+      vector<T, Alloc> work(static_cast<std::size_t>(lwork), alloc);
 
       zgesvd_(&jobu, &jobvt, &lap_m, &lap_n, a_copy.begin(), &lda, s.begin(), vt.begin(), &ldu, u.begin(), &ldvt,
               work.begin(), &lwork, rwork.begin(), &info);
@@ -165,10 +180,12 @@ auto svd(const M& A) -> std::optional<svd_result<typename M::scalar_type>>
 
 export template<typename M>
   requires lam::concepts::experimental::matrix_c_weak<M, typename M::scalar_type>
-auto pinv(const M& A) -> matrix<typename M::scalar_type> // NOLINT(readability-function-cognitive-complexity)
+auto pinv(const M& A) -> matrix<typename M::scalar_type, storage_layout::row_major,
+                                detail::result_alloc_t<M>> // NOLINT(readability-function-cognitive-complexity)
 {
   using T = typename M::scalar_type;
-  using Alloc = std::allocator<T>;
+  using Alloc = detail::result_alloc_t<M>;
+  const Alloc alloc = detail::result_allocator(A);
   using RealT = std::conditional_t<std::is_same_v<T, std::complex<double>>, double,
                                    std::conditional_t<std::is_same_v<T, std::complex<float>>, float, T>>;
   RealT tol = std::numeric_limits<RealT>::epsilon();
@@ -176,7 +193,7 @@ auto pinv(const M& A) -> matrix<typename M::scalar_type> // NOLINT(readability-f
   auto svd_opt = svd(A);
   if (!svd_opt.has_value())
   {
-    return matrix<T, Alloc>(A.cols(), A.rows());
+    return matrix<T, storage_layout::row_major, Alloc>(A.cols(), A.rows(), alloc);
   }
 
   auto& res = svd_opt.value();
@@ -193,9 +210,9 @@ auto pinv(const M& A) -> matrix<typename M::scalar_type> // NOLINT(readability-f
     }
   }
 
-  RealT threshold = std::max(m, n) * max_s * std::abs(tol);
+  RealT threshold = std::max(m, n) * max_s * tol;
 
-  matrix<T, Alloc> s_inv(n, m);
+  matrix<T, storage_layout::row_major, Alloc> s_inv(n, m, alloc);
   for (std::size_t i = 0; i < n; ++i)
   {
     for (std::size_t j = 0; j < m; ++j)
@@ -212,12 +229,9 @@ auto pinv(const M& A) -> matrix<typename M::scalar_type> // NOLINT(readability-f
     }
   }
 
-  // A = U S V^T  ==>  A^+ = V S^+ U^T
-  // But wait! U is m x m, S is m x n, V^T is n x n.
-  // Wait, S is formally an m x n diagonal matrix. And S^+ is n x m.
-  // We have U (m x m), vt (n x n). So V is vt^T (which is n x n for complex, vt^H).
+  // A = U S V^T  ==>  A^+ = V S^+ U^T, with V = vt^H (n x n) and S^+ the n x m pseudo-inverse of S.
 
-  matrix<T, Alloc> u_h(m, m);
+  matrix<T, storage_layout::row_major, Alloc> u_h(m, m, alloc);
   for (std::size_t i = 0; i < m; ++i)
   {
     for (std::size_t j = 0; j < m; ++j)
@@ -233,7 +247,7 @@ auto pinv(const M& A) -> matrix<typename M::scalar_type> // NOLINT(readability-f
     }
   }
 
-  matrix<T, Alloc> v(n, n);
+  matrix<T, storage_layout::row_major, Alloc> v(n, n, alloc);
   for (std::size_t i = 0; i < n; ++i)
   {
     for (std::size_t j = 0; j < n; ++j)
@@ -256,13 +270,13 @@ auto pinv(const M& A) -> matrix<typename M::scalar_type> // NOLINT(readability-f
 export template<typename M, typename V>
   requires lam::concepts::experimental::matrix_c_weak<M, typename M::scalar_type> &&
            lam::concepts::experimental::vector_c_weak<V>
-auto lstsq(const M& A, const V& b) -> vector<typename M::scalar_type>
+auto lstsq(const M& A, const V& b) -> vector<typename M::scalar_type, detail::result_alloc_t<M>>
 {
   using T = typename M::scalar_type;
-  using Alloc = std::allocator<T>;
+  using Alloc = detail::result_alloc_t<M>;
 
-  matrix<T, Alloc> pinv_A = pinv(A);
-  vector<T, Alloc> x(pinv_A.rows());
+  matrix<T, storage_layout::row_major, Alloc> pinv_A = pinv(A);
+  vector<T, Alloc> x(pinv_A.rows(), pinv_A.get_allocator());
 
   for (std::size_t i = 0; i < pinv_A.rows(); ++i)
   {
@@ -306,7 +320,7 @@ std::size_t matrix_rank(const M& A)
     }
   }
 
-  RealT threshold = std::max(m, n) * max_s * std::abs(tol);
+  RealT threshold = std::max(m, n) * max_s * tol;
 
   std::size_t r = 0;
   for (std::size_t i = 0; i < min_mn; ++i)
@@ -369,10 +383,11 @@ struct svd_diagnostics
 /**
  * Compute SVD error diagnostics for the factorisation res of A = U·diag(s)·Vt.
  */
-export template<typename M>
+export template<typename M, typename Alloc>
   requires lam::concepts::experimental::matrix_c_weak<M, typename M::scalar_type>
-auto svd_check(const M& A,
-               const svd_result<typename M::scalar_type>& res) // NOLINT(readability-function-cognitive-complexity)
+auto svd_check(
+  const M& A,
+  const svd_result<typename M::scalar_type, Alloc>& res) // NOLINT(readability-function-cognitive-complexity)
   -> svd_diagnostics<typename M::scalar_type>
 {
   using T = typename M::scalar_type;
@@ -382,13 +397,8 @@ auto svd_check(const M& A,
   const std::size_t n = A.cols();
   const std::size_t k = res.s.size();
 
-  // Three independent branches run concurrently:
-  //   - reconstruction error + ||A||_F²  (O(mn·k))
-  //   - ||U^H·U − I||_F                  (O(m³))
-  //   - ||Vt·Vt^H − I||_F                (O(n³))
-  // All three only read from A and res; each writes only to its own local.
-
-  auto fut_recon = std::async(std::launch::async, [&]() -> std::pair<RealT, RealT> {
+  // Serial by choice: on these sizes three thread spawns cost more than the arithmetic.
+  auto recon = [&]() -> std::pair<RealT, RealT> {
     RealT frob_A_sq = RealT{0};
     RealT frob_res_sq = RealT{0};
     for (std::size_t i = 0; i < m; ++i)
@@ -405,9 +415,9 @@ auto svd_check(const M& A,
       }
     }
     return {frob_A_sq, frob_res_sq};
-  });
+  };
 
-  auto fut_u = std::async(std::launch::async, [&]() -> RealT {
+  auto u_orth = [&]() -> RealT {
     RealT u_orth_sq = RealT{0};
     for (std::size_t i = 0; i < m; ++i)
     {
@@ -423,9 +433,9 @@ auto svd_check(const M& A,
       }
     }
     return u_orth_sq;
-  });
+  };
 
-  auto fut_vt = std::async(std::launch::async, [&]() -> RealT {
+  auto vt_orth = [&]() -> RealT {
     RealT vt_orth_sq = RealT{0};
     for (std::size_t i = 0; i < n; ++i)
     {
@@ -441,11 +451,11 @@ auto svd_check(const M& A,
       }
     }
     return vt_orth_sq;
-  });
+  };
 
-  auto [frob_A_sq, frob_res_sq] = fut_recon.get();
-  RealT u_orth_sq = fut_u.get();
-  RealT vt_orth_sq = fut_vt.get();
+  auto [frob_A_sq, frob_res_sq] = recon();
+  RealT u_orth_sq = u_orth();
+  RealT vt_orth_sq = vt_orth();
 
   RealT reconstruction_error = (frob_A_sq > RealT{0}) ? std::sqrt(frob_res_sq / frob_A_sq) : std::sqrt(frob_res_sq);
 

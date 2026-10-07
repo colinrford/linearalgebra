@@ -55,75 +55,132 @@ private:
 public:
   constexpr vector() : m_alloc{}, m_dimension{0}, arrow{nullptr, Deleter{}} {}
 
-  constexpr explicit vector(size_type dim, const allocator_type& alloc = allocator_type())
+  constexpr explicit vector(const allocator_type& alloc) noexcept
+    : m_alloc{alloc}, m_dimension{0}, arrow{nullptr, Deleter{alloc, 0}}
+  {}
+
+  constexpr explicit vector(size_type dim)
+    requires std::default_initializable<allocator_type>
+    : vector(dim, allocator_type())
+  {}
+
+  constexpr vector(size_type dim, const allocator_type& alloc)
     : m_alloc{alloc}, m_dimension{dim}, arrow{nullptr, Deleter{alloc, dim}}
   {
     if (dim == 0)
       throw vector_exception::non_pos();
-    auto* ptr = std::allocator_traits<Alloc>::allocate(m_alloc, dim);
-    arrow.reset(ptr);
-    for (size_type i = 0; i < dim; ++i)
-    {
-      std::allocator_traits<Alloc>::construct(m_alloc, ptr + i);
-    }
+    arrow.reset(detail::build_storage(
+      m_alloc, dim, [&](pointer p, size_type) { std::allocator_traits<Alloc>::construct(m_alloc, p); }));
   }
 
-  constexpr vector(std::initializer_list<scalar_type> il, const allocator_type& alloc = allocator_type())
+  constexpr vector(std::initializer_list<scalar_type> il)
+    requires std::default_initializable<allocator_type>
+    : vector(il, allocator_type())
+  {}
+
+  constexpr vector(std::initializer_list<scalar_type> il, const allocator_type& alloc)
     : m_alloc{alloc}, m_dimension{il.size()}, arrow{nullptr, Deleter{alloc, il.size()}}
   {
     if (il.size() == 0)
       throw vector_exception::non_pos();
-    auto* ptr = std::allocator_traits<Alloc>::allocate(m_alloc, m_dimension);
-    arrow.reset(ptr);
-    size_type i = 0;
-    for (const auto& val : il)
-    {
-      std::allocator_traits<Alloc>::construct(m_alloc, ptr + i, val);
-      ++i;
-    }
+    arrow.reset(detail::build_storage(m_alloc, m_dimension, [&](pointer p, size_type i) {
+      std::allocator_traits<Alloc>::construct(m_alloc, p, il.begin()[i]);
+    }));
   }
 
-  constexpr vector(const std::vector<scalar_type>& v, const allocator_type& alloc = allocator_type())
+  constexpr vector(const std::vector<scalar_type>& v)
+    requires std::default_initializable<allocator_type>
+    : vector(v, allocator_type())
+  {}
+
+  constexpr vector(const std::vector<scalar_type>& v, const allocator_type& alloc)
     : m_alloc{alloc}, m_dimension{v.size()}, arrow{nullptr, Deleter{alloc, v.size()}}
   {
     if (v.size() == 0)
       throw vector_exception::non_pos();
-    auto* ptr = std::allocator_traits<Alloc>::allocate(m_alloc, m_dimension);
-    arrow.reset(ptr);
-    for (size_type i = 0; i < m_dimension; ++i)
-    {
-      std::allocator_traits<Alloc>::construct(m_alloc, ptr + i, v[i]);
-    }
+    arrow.reset(detail::build_storage(m_alloc, m_dimension, [&](pointer p, size_type i) {
+      std::allocator_traits<Alloc>::construct(m_alloc, p, v[i]);
+    }));
   }
 
-  vector(vector&&) noexcept = default;
-  vector& operator=(vector&&) noexcept = default;
+  constexpr vector(vector&& other) noexcept
+    : m_alloc{other.m_alloc}, m_dimension{std::exchange(other.m_dimension, 0)}, arrow{std::move(other.arrow)}
+  { other.arrow.get_deleter().n = 0; }
+
+  // Steal storage only if the allocator propagates or compares equal; otherwise move into our own storage.
+  constexpr vector& operator=(vector&& other) noexcept(detail::steals_on_move_assignment<Alloc>)
+  {
+    if (this == &other)
+      return *this;
+
+    if (detail::propagates_on_move_assignment<Alloc> || m_alloc == other.m_alloc)
+    {
+      arrow.reset();
+      if constexpr (detail::propagates_on_move_assignment<Alloc>)
+      {
+        m_alloc = std::move(other.m_alloc);
+        arrow.get_deleter().alloc = m_alloc;
+      }
+      arrow.get_deleter().n = other.m_dimension;
+      arrow.reset(other.arrow.release());
+      m_dimension = other.m_dimension;
+      other.arrow.get_deleter().n = 0;
+      other.m_dimension = 0;
+    }
+    else if (other.m_dimension == 0)
+    {
+      arrow.reset();
+      arrow.get_deleter().n = 0;
+      m_dimension = 0;
+    }
+    else if (m_dimension == other.m_dimension)
+    {
+      for (size_type i = 0; i < m_dimension; ++i)
+        arrow[i] = std::move(other.arrow[i]);
+    }
+    else
+    {
+      pointer fresh = detail::build_storage(m_alloc, other.m_dimension, [&](pointer p, size_type i) {
+        std::allocator_traits<Alloc>::construct(m_alloc, p, std::move(other.arrow[i]));
+      });
+      arrow.reset();
+      arrow.get_deleter().n = other.m_dimension;
+      arrow.reset(fresh);
+      m_dimension = other.m_dimension;
+    }
+    return *this;
+  }
 
   constexpr vector(const vector& other)
     : m_alloc{other.m_alloc}, m_dimension{other.m_dimension}, arrow{nullptr, Deleter{m_alloc, other.m_dimension}}
   {
     if (m_dimension > 0)
-    {
-      auto* ptr = std::allocator_traits<Alloc>::allocate(m_alloc, m_dimension);
-      arrow.reset(ptr);
-      for (size_type i = 0; i < m_dimension; ++i)
-      {
-        std::allocator_traits<Alloc>::construct(m_alloc, ptr + i, other[i]);
-      }
-    }
+      arrow.reset(detail::build_storage(m_alloc, m_dimension, [&](pointer p, size_type i) {
+        std::allocator_traits<Alloc>::construct(m_alloc, p, other.arrow[i]);
+      }));
   }
 
   constexpr vector(const vector& other, const allocator_type& alloc)
     : m_alloc{alloc}, m_dimension{other.m_dimension}, arrow{nullptr, Deleter{alloc, other.m_dimension}}
   {
     if (m_dimension > 0)
+      arrow.reset(detail::build_storage(m_alloc, m_dimension, [&](pointer p, size_type i) {
+        std::allocator_traits<Alloc>::construct(m_alloc, p, other.arrow[i]);
+      }));
+  }
+
+  // Any vector over the same scalars; the allocator is named here, never inherited from the source.
+  template<typename Other>
+    requires(!std::same_as<Other, vector>) && compatible_vectors_c_weak<vector, Other>
+  constexpr vector(const Other& other, const allocator_type& alloc)
+    : m_alloc{alloc}, m_dimension{other.size()}, arrow{nullptr, Deleter{alloc, other.size()}}
+  {
+    if (m_dimension > 0)
     {
-      auto* ptr = std::allocator_traits<Alloc>::allocate(m_alloc, m_dimension);
-      arrow.reset(ptr);
-      for (size_type i = 0; i < m_dimension; ++i)
-      {
-        std::allocator_traits<Alloc>::construct(m_alloc, ptr + i, other[i]);
-      }
+      auto src = other.as_span();
+      arrow.reset(detail::build_storage(m_alloc, m_dimension, [&](pointer p, size_type i) {
+        std::allocator_traits<Alloc>::construct(m_alloc, p, src[i]);
+      }));
     }
   }
 
@@ -158,7 +215,30 @@ public:
 
   constexpr allocator_type get_allocator() const noexcept { return m_alloc; }
 
-  constexpr scalar_type dot(const vector& other) const { return lam::linalg::dot(*this, other); }
+  // Throws when the allocators differ and do not propagate; swap never copies elements.
+  constexpr void swap(vector& other) noexcept(detail::steals_on_swap<Alloc>)
+  {
+    if constexpr (detail::propagates_on_swap<Alloc>)
+    {
+      using std::swap;
+      swap(m_alloc, other.m_alloc);
+    }
+    else if (!(m_alloc == other.m_alloc))
+      throw vector_exception::unequal_allocators();
+    std::swap(m_dimension, other.m_dimension);
+    arrow.swap(other.arrow);
+  }
+  friend constexpr void swap(vector& a, vector& b) noexcept(noexcept(a.swap(b))) { a.swap(b); }
+
+  // Degenerate additive identity. A zero with a dimension needs one: zero_like(v).
+  static constexpr vector zero()
+    requires std::default_initializable<allocator_type>
+  { return vector{}; }
+
+  template<typename Other>
+    requires compatible_vectors_c_weak<vector, Other>
+  constexpr scalar_type dot(const Other& other) const
+  { return lam::linalg::dot(*this, other); }
   constexpr scalar_type norm2() const { return lam::linalg::norm2(*this); }
   constexpr scalar_type norm() const { return lam::linalg::norm(*this); }
 
@@ -172,17 +252,23 @@ public:
     return std::pow(sum, scalar_type{1} / p);
   }
 
-  constexpr vector cross(const vector& other) const { return lam::linalg::cross(*this, other); }
+  template<typename Other>
+    requires compatible_vectors_c_weak<vector, Other>
+  constexpr vector cross(const Other& other) const
+  { return lam::linalg::cross(*this, other); }
 
   constexpr vector unit() const { return lam::linalg::unit(*this); }
 
-  constexpr bool operator==(const vector& other) const
+  template<typename Other>
+    requires compatible_vectors_c_weak<vector, Other>
+  constexpr bool operator==(const Other& other) const
   {
-    if (m_dimension != other.m_dimension)
+    if (m_dimension != other.size())
       return false;
+    auto rhs = other.as_span();
     for (size_type i = 0; i < m_dimension; ++i)
     {
-      if ((*this)[i] != other[i])
+      if (arrow[i] != rhs[i])
         return false;
     }
     return true;
@@ -196,12 +282,15 @@ public:
     return res;
   }
 
-  constexpr vector& operator+=(const vector& other)
+  template<typename Other>
+    requires compatible_vectors_c_weak<vector, Other>
+  constexpr vector& operator+=(const Other& other)
   {
-    if (m_dimension != other.m_dimension)
+    if (m_dimension != other.size())
       throw vector_exception::plus_equals_unequal_dim();
+    auto rhs = other.as_span();
     for (size_type i = 0; i < m_dimension; ++i)
-      arrow[i] += other.arrow[i];
+      arrow[i] += rhs[i];
     return *this;
   }
 
@@ -215,12 +304,15 @@ public:
   constexpr std::span<scalar_type> as_span() noexcept { return {arrow.get(), m_dimension}; }
   constexpr std::span<const scalar_type> as_span() const noexcept { return {arrow.get(), m_dimension}; }
 
-  constexpr vector& operator-=(const vector& other)
+  template<typename Other>
+    requires compatible_vectors_c_weak<vector, Other>
+  constexpr vector& operator-=(const Other& other)
   {
-    if (m_dimension != other.m_dimension)
+    if (m_dimension != other.size())
       throw vector_exception::plus_equals_unequal_dim();
+    auto rhs = other.as_span();
     for (size_type i = 0; i < m_dimension; ++i)
-      arrow[i] -= other.arrow[i];
+      arrow[i] -= rhs[i];
     return *this;
   }
 
@@ -252,34 +344,60 @@ public:
   }
 
   // Delegate to generic algorithms
-  constexpr scalar_type angle(const vector& other) const { return lam::linalg::angle(*this, other); }
-  constexpr vector project(const vector& onto) const { return lam::linalg::project(*this, onto); }
-  constexpr vector reject(const vector& from) const { return lam::linalg::reject(*this, from); }
-  constexpr vector reflect(const vector& normal) const { return lam::linalg::reflect(*this, normal); }
-  constexpr vector lerp(const vector& other, scalar_type t) const { return lam::linalg::lerp(*this, other, t); }
-  constexpr scalar_type distance(const vector& other) const { return lam::linalg::distance(*this, other); }
-  constexpr bool is_parallel(const vector& other, scalar_type tolerance = scalar_type{1e-10}) const
+  template<typename Other>
+    requires compatible_vectors_c_weak<vector, Other>
+  constexpr scalar_type angle(const Other& other) const
+  { return lam::linalg::angle(*this, other); }
+  template<typename Other>
+    requires compatible_vectors_c_weak<vector, Other>
+  constexpr vector project(const Other& onto) const
+  { return lam::linalg::project(*this, onto); }
+  template<typename Other>
+    requires compatible_vectors_c_weak<vector, Other>
+  constexpr vector reject(const Other& from) const
+  { return lam::linalg::reject(*this, from); }
+  template<typename Other>
+    requires compatible_vectors_c_weak<vector, Other>
+  constexpr vector reflect(const Other& normal) const
+  { return lam::linalg::reflect(*this, normal); }
+  template<typename Other>
+    requires compatible_vectors_c_weak<vector, Other>
+  constexpr vector lerp(const Other& other, scalar_type t) const
+  { return lam::linalg::lerp(*this, other, t); }
+  template<typename Other>
+    requires compatible_vectors_c_weak<vector, Other>
+  constexpr scalar_type distance(const Other& other) const
+  { return lam::linalg::distance(*this, other); }
+  template<typename Other>
+    requires compatible_vectors_c_weak<vector, Other>
+  constexpr bool is_parallel(const Other& other, scalar_type tolerance = default_angle_tolerance<scalar_type>) const
   { return lam::linalg::is_parallel(*this, other, tolerance); }
-  constexpr bool is_orthogonal(const vector& other, scalar_type tolerance = scalar_type{1e-10}) const
+  template<typename Other>
+    requires compatible_vectors_c_weak<vector, Other>
+  constexpr bool is_orthogonal(const Other& other, scalar_type tolerance = default_angle_tolerance<scalar_type>) const
   { return lam::linalg::is_orthogonal(*this, other, tolerance); }
-  constexpr scalar_type triple_product(const vector& b, const vector& c) const
+  template<typename B, typename C>
+    requires compatible_vectors_c_weak<vector, B> && compatible_vectors_c_weak<vector, C>
+  constexpr scalar_type triple_product(const B& b, const C& c) const
   { return lam::linalg::triple_product(*this, b, c); }
 };
 
 // Thin wrappers over the generic algorithms, fixed to `vector`.
 
-export template<typename T, typename Alloc>
-constexpr vector<T, Alloc> operator+(const vector<T, Alloc>& a, const vector<T, Alloc>& b)
+// Operands may carry different allocators; the result takes the LEFT one's.
+export template<typename T, typename A1, typename A2>
+constexpr vector<T, A1> operator+(const vector<T, A1>& a, const vector<T, A2>& b)
 {
-  vector<T, Alloc> res(a, a.get_allocator());
+  vector<T, A1> res(a, a.get_allocator());
   res += b;
   return res;
 }
 
-export template<typename T, typename Alloc>
-constexpr vector<T, Alloc> operator-(const vector<T, Alloc>& a, const vector<T, Alloc>& b)
+// Operands may carry different allocators; the result takes the LEFT one's.
+export template<typename T, typename A1, typename A2>
+constexpr vector<T, A1> operator-(const vector<T, A1>& a, const vector<T, A2>& b)
 {
-  vector<T, Alloc> res(a, a.get_allocator());
+  vector<T, A1> res(a, a.get_allocator());
   res -= b;
   return res;
 }
@@ -303,6 +421,13 @@ constexpr vector<T, Alloc> operator/(const vector<T, Alloc>& v, const T& s)
   res /= s;
   return res;
 }
+
+// Spares the caller from naming an allocator type: a memory_resource* converts to the allocator.
+export namespace pmr
+{
+template<typename T>
+using vector = lam::linalg::vector<T, std::pmr::polymorphic_allocator<T>>;
+} // namespace pmr
 
 } // namespace lam::linalg
 

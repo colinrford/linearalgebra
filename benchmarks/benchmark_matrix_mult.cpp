@@ -43,7 +43,7 @@ int main()
 
   // 3. Matrix C (Col Major) - Target for Optimization
   // Physically, C's data is arranged such that Row*Col should be very fast with the right loop.
-  matrix<double, std::allocator<double>, storage_layout::col_major> C(N, N);
+  matrix<double, storage_layout::col_major> C(N, N);
 
   // Fill with dummy data
   for (int i = 0; i < N; ++i)
@@ -76,7 +76,7 @@ int main()
   });
 
   // 4. Matrix D (Col Major)
-  matrix<double, std::allocator<double>, storage_layout::col_major> D(N, N);
+  matrix<double, storage_layout::col_major> D(N, N);
   for (int i = 0; i < N; ++i)
     for (int j = 0; j < N; ++j)
       D[i, j] = 1.0;

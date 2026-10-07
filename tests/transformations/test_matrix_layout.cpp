@@ -22,8 +22,8 @@ int main()
   // [ 1 2 3 ]
   // [ 4 5 6 ]
 
-  matrix<int, std::allocator<int>, row_layout> m_row(2, 3);
-  matrix<int, std::allocator<int>, col_layout> m_col(2, 3);
+  matrix<int, row_layout> m_row(2, 3);
+  matrix<int, col_layout> m_col(2, 3);
 
   auto filler = [](auto& m) {
     m[0, 0] = 1;
@@ -80,7 +80,7 @@ int main()
 
   // 2. Algorithm Verification
   // Check if generic algorithms accept col_major matrix
-  matrix<double, std::allocator<double>, col_layout> m_double(2, 2);
+  matrix<double, col_layout> m_double(2, 2);
   m_double[0, 0] = 4.0;
   m_double[0, 1] = 3.0;
   m_double[1, 0] = 6.0;
@@ -111,13 +111,13 @@ int main()
 
   // 4. Mixed Layout Multiplication
   // m_mix_row (RowMajor) * m_mix_col (ColMajor)
-  matrix<int, std::allocator<int>, row_layout> m_mix_row(2, 2);
+  matrix<int, row_layout> m_mix_row(2, 2);
   m_mix_row[0, 0] = 1;
   m_mix_row[0, 1] = 2;
   m_mix_row[1, 0] = 3;
   m_mix_row[1, 1] = 4;
 
-  matrix<int, std::allocator<int>, col_layout> m_mix_col(2, 2);
+  matrix<int, col_layout> m_mix_col(2, 2);
   m_mix_col[0, 0] = 1;
   m_mix_col[0, 1] = 0;
   m_mix_col[1, 0] = 0;
@@ -159,8 +159,8 @@ int main()
   }
 
   // Explicit conversion back
-  matrix<int, std::allocator<int>, row_layout> back_to_row = tr;
-  if (back_to_row == matrix<int, std::allocator<int>, row_layout>(2, 2))
+  matrix<int, row_layout> back_to_row = tr;
+  if (back_to_row == matrix<int, row_layout>(2, 2))
   {
     // Actually verify values
     if (back_to_row[0, 1] == 3) // A^T (row major)

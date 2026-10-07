@@ -30,8 +30,8 @@ int main()
   assert((C1[1, 1] == 335));
 
   // Test col_major * col_major fallback
-  matrix<int, std::allocator<int>, storage_layout::col_major> A_cc(2, 3);
-  matrix<int, std::allocator<int>, storage_layout::col_major> B_cc(3, 2);
+  matrix<int, storage_layout::col_major> A_cc(2, 3);
+  matrix<int, storage_layout::col_major> B_cc(3, 2);
   A_cc[0, 0] = 1;
   A_cc[0, 1] = 2;
   A_cc[0, 2] = 3;
@@ -52,8 +52,8 @@ int main()
   assert((C2[1, 1] == 335));
 
   // Test col_major * row_major fallback (uses generic tiled cache approach)
-  matrix<int, std::allocator<int>, storage_layout::col_major> A_cr(2, 3);
-  matrix<int, std::allocator<int>, storage_layout::row_major> B_cr(3, 2);
+  matrix<int, storage_layout::col_major> A_cr(2, 3);
+  matrix<int, storage_layout::row_major> B_cr(3, 2);
   A_cr[0, 0] = 1;
   A_cr[0, 1] = 2;
   A_cr[0, 2] = 3;
@@ -74,8 +74,8 @@ int main()
   assert((C3[1, 1] == 335));
 
   // Test row_major * col_major fallback
-  matrix<int, std::allocator<int>, storage_layout::row_major> A_rc(2, 3);
-  matrix<int, std::allocator<int>, storage_layout::col_major> B_rc(3, 2);
+  matrix<int, storage_layout::row_major> A_rc(2, 3);
+  matrix<int, storage_layout::col_major> B_rc(3, 2);
   A_rc[0, 0] = 1;
   A_rc[0, 1] = 2;
   A_rc[0, 2] = 3;

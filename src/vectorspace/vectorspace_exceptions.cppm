@@ -39,6 +39,10 @@ export struct vector_exception : public std::exception
   {
     const char* what() const noexcept override { return "Dimension mismatch for operator+=.\n"; }
   };
+  struct unequal_allocators : public std::exception
+  {
+    const char* what() const noexcept override { return "Swap of unequal allocators that do not propagate.\n"; }
+  };
 };
 
 } // namespace lam::linalg
