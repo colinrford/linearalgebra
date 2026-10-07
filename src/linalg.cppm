@@ -8,7 +8,6 @@
 
 export module lam.linearalgebra;
 export import :vectorspace;
-export import lam.concepts;
 export import :matrix;
 export import :matrix.product;
 export import :matrix.decomposition;
