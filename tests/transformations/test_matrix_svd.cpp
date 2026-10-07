@@ -92,7 +92,8 @@ void test_moore_penrose()
   auto P = linalg::pinv(A); // 2×3
 
   R tol = std::is_same_v<R, float> ? R{1e-4} : R{1e-10};
-  constexpr std::size_t m = 3, n = 2;
+  constexpr std::size_t m = 3;
+  constexpr std::size_t n = 2;
 
   // 1: A·pinv(A)·A = A
   {

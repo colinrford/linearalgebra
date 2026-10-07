@@ -71,7 +71,8 @@ void run_stress_test(std::size_t rows, std::size_t cols)
 
   // Reconstruction error (O(mn·k) — always fast)
   {
-    R frob_A_sq = R{0}, frob_res_sq = R{0};
+    R frob_A_sq = R{0};
+    R frob_res_sq = R{0};
     for (std::size_t i = 0; i < rows; ++i)
       for (std::size_t j = 0; j < cols; ++j)
       {

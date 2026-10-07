@@ -94,7 +94,8 @@ double min_us(int reps, Setup&& setup, Func&& f)
 
 struct result
 {
-  int m, n;
+  int m;
+  int n;
   double gesvd_us;
   double gesdd_us;
 };
@@ -123,8 +124,13 @@ result bench_size(int m, int n, int reps)
   double gesvd_us = 0;
   {
     // Workspace query
-    char jobu = 'A', jobvt = 'A';
-    int lda = m, ldu = m, ldvt = n, lwork = -1, info = 0;
+    char jobu = 'A';
+    char jobvt = 'A';
+    int lda = m;
+    int ldu = m;
+    int ldvt = n;
+    int lwork = -1;
+    int info = 0;
     double work_query = 0;
     std::copy(src.begin(), src.end(), a.begin());
     dgesvd_(&jobu, &jobvt, &m, &n, a.data(), &lda, s.data(), u.data(), &ldu, vt.data(), &ldvt, &work_query, &lwork,
@@ -145,7 +151,11 @@ result bench_size(int m, int n, int reps)
   {
     // Workspace query
     char jobz = 'A';
-    int lda = m, ldu = m, ldvt = n, lwork = -1, info = 0;
+    int lda = m;
+    int ldu = m;
+    int ldvt = n;
+    int lwork = -1;
+    int info = 0;
     double work_query = 0;
     std::vector<int> iwork(static_cast<std::size_t>(8 * k));
     std::copy(src.begin(), src.end(), a.begin());

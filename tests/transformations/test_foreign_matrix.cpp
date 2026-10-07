@@ -23,7 +23,8 @@ struct foreign_matrix
   using size_type = std::size_t;
 
   std::vector<double> data;
-  size_type r, c;
+  size_type r;
+  size_type c;
 
   foreign_matrix(size_type rows, size_type cols) : r(rows), c(cols), data(rows * cols) {}
 

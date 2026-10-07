@@ -110,7 +110,8 @@ static void bm_graphics_pool(benchmark::State& state)
 static void bm_ml_heap(benchmark::State& state)
 {
   const std::size_t dim = static_cast<std::size_t>(state.range(0));
-  heap_vec a(dim), b(dim);
+  heap_vec a(dim);
+  heap_vec b(dim);
   lb::fill(a, dim, 1);
   lb::fill(b, dim, 2);
 
