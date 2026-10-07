@@ -23,3 +23,6 @@ linalg_add_test(test_matrix_mixed_allocators       SOURCE transformations/test_m
 linalg_add_test(test_accessor_lifetime             SOURCE transformations/test_accessor_lifetime.cpp)
 linalg_add_test(linalg_test_exceptions            SOURCE vectorspace/test_exceptions.cpp)
 linalg_add_test(test_matrix_product_fallback      SOURCE transformations/test_matrix_product_fallback.cpp)
+
+# Optional third-party allocator coverage; silently skipped when the package is absent.
+add_subdirectory(thirdparty)
