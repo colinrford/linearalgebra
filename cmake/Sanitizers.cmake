@@ -16,8 +16,9 @@ if(LAM_ENABLE_ASAN)
 endif()
 
 if(LAM_ENABLE_UBSAN AND NOT MSVC)
-  add_compile_options(-fsanitize=undefined -fno-omit-frame-pointer)
-  add_link_options(-fsanitize=undefined)
+  # UBSan recovers by default: it prints and exits 0, so ctest reports a finding as Passed.
+  add_compile_options(-fsanitize=undefined -fno-sanitize-recover=all -fno-omit-frame-pointer)
+  add_link_options(-fsanitize=undefined -fno-sanitize-recover=all)
 endif()
 
 if(LAM_ENABLE_TSAN AND NOT MSVC)
